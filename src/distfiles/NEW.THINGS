@@ -1715,4 +1715,15 @@
 4)	old treas_room() kept under #if 0
 5)	stealing and turning undead use chase_it()
 
+1.05, Aug 13, 93
+1)	potion of shielding adds to s_acmod
+2)	place_mons() fills a coord
+3)	saving asks for a file name without asking first.  saved games
+	written and read with stdio
+4)	restore() runs the game itself
+5)	trading post prices and purse are unsigned long
+6)	version strings for 1.05
+7)	teleport() returns nothing.  the wizard password is not
+	encrypted
+
 -------	End of File ------
