@@ -576,7 +576,7 @@ struct init_artifact    arts[] = {
     { "Crown of Might",        75, 6, 2, 1,  1, 2350000L, 50 },
     { "Sceptre of Might",      80, 2, 2, 1,  6, 3800000L, 50 },
     { "Silmaril of Ea",        90, 4, 2, 5,  1, 5000000L, 50 },
-    { "Wand of Lucifer",     100, 4, 2, 3, 10, 8000000L, 50 }
+    { "Wand of Yendor",      100, 4, 2, 3, 10, 8000000L, 50 }
 };
 
 int     maxartifact = MAXARTIFACT;
