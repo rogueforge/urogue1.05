@@ -1682,4 +1682,10 @@
 1.05, May 22, 93
 1)	magicitm.c and the strings in rogue.c moved into init.c
 
+1.05, May 23, 93
+1)	messages use stdarg.  new vmsg()
+2)	readchar() reads through curses
+3)	get_string() is the line editor for every prompt
+4)	status line shows how fast you eat
+
 -------	End of File ------
