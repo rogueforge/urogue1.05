@@ -1764,4 +1764,9 @@
 2)	when, otherwise and until macros gone
 3)	magicitm.c and properti.c out of the Makefile
 
+1.05, Dec 2, 93
+1)	new Makefile
+2)	README, NEW.THINGS and urogue.6 moved out of distfiles
+3)	TODO started
+
 -------	End of File ------
