@@ -1679,4 +1679,7 @@
 	encrypted
 2)	get_obj() gone.  free_ident() stops once it has freed the entry
 
+1.05, May 22, 93
+1)	magicitm.c and the strings in rogue.c moved into init.c
+
 -------	End of File ------
