@@ -1652,4 +1652,12 @@
 1)	properti.c folded into bag.c
 2)	bag filters and actions take their argument in a bag_arg
 
+1.05, Oct 27, 92
+1)	monsters chase a thing, not a spot.  runto() is chase_it()
+2)	the end of a turn is done in do_after_effects()
+3)	wizard 'o' command is make_omnipotent()
+4)	escape is no longer a command
+5)	a ring of teleportation teleports 4% of the time, up from 2%
+6)	being summoned to a throne room is ten times rarer
+
 -------	End of File ------

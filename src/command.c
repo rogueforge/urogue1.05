@@ -759,7 +759,7 @@ do_after_effects(void)
             }
         }
 
-    if (rnd(9999) == 0)
+    if (rnd(99999) == 0)
     {
         new_level(THRONE);
         fighting = running = after = FALSE;
