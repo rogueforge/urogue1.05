@@ -1,69 +1,205 @@
+COMPFLAGS     =
+
+CFLAGS	      = $(COMPFLAGS)
+PFLAGS	      = $(COMPFLAGS)
+FFLAGS	      = $(COMPFLAGS)
+CCFLAGS       = $(COMPFLAGS)
+CXXFLAGS      = $(COMPFLAGS)
+
+DEST	      = /usr/games
+
+# Uncomment this if you want system header files to be expanded
 #
-# Last Modified: Dec 30, 1990
-#
+# SYSHDRS       =
 
-HDRS=	rogue.h 
-SRCS=	armor.c artifact.c bag.c chase.c command.c daemon.c daemons.c encumb.c\
-	fight.c getplay.c ident.c init.c io.c list.c magic.c main.c\
-	maze.c misc.c monsdata.c monsters.c move.c newlvl.c options.c pack.c\
-	passages.c player.c potions.c random.c rings.c rip.c rogue.c\
-	rooms.c save.c scrolls.c status.c sticks.c things.c trader.c vers.c\
-	weapons.c wizard.c
-OBJS=	armor.o artifact.o bag.o chase.o command.o daemon.o daemons.o encumb.o\
-	fight.o getplay.o ident.o init.o io.o list.o magic.o main.o\
-	maze.o misc.o monsdata.o monsters.o move.o newlvl.o options.o pack.o\
-	passages.o player.o potions.o random.o rings.o rip.o rogue.o\
-	rooms.o	save.o scrolls.o status.o sticks.o things.o trader.o vers.o\
-	weapons.o wizard.o
-CFLAGS=	-g
+EXTHDRS	      =
 
-urogue: $(OBJS)
-	cc -g -o urogue $(OBJS) -lcurses
+HDRS	      = rogue.h
 
-urprint: urprint.o init.o monsdata.o
-	cc -o urprint urprint.o init.o monsdata.o
+INSTALL	      = install
 
-armor.o: armor.c rogue.h
-artifact.o: artifact.c  rogue.h
-bag.o: bag.c rogue.h
-chase.o: chase.c rogue.h 
-command.o: command.c rogue.h
-daemon.o: daemon.c rogue.h
-daemons.o: daemons.c rogue.h 
-encumb.o: encumb.c rogue.h
-fight.o: fight.c rogue.h
-getplay.o: getplay.c rogue.h
-ident.o: ident.c rogue.h
-init.o: init.c rogue.h
-io.o: io.c rogue.h 
-list.o: list.c rogue.h
-magic.o: magic.c rogue.h
-main.o: main.c rogue.h 
-maze.o: maze.c rogue.h
-misc.o: misc.c rogue.h
-monsdata.o: monsdata.c rogue.h
-monsters.o: monsters.c rogue.h 
-move.o: move.c rogue.h 
-newlvl.o: newlvl.c rogue.h
-options.o: options.c rogue.h
-pack.o: pack.c rogue.h
-passages.o: passages.c rogue.h
-player.o: player.c rogue.h
-potions.o: potions.c rogue.h
-properti.o: properti.c rogue.h
-random.o: random.c
-rings.o: rings.c rogue.h
-rip.o: rip.c rogue.h 
-rogue.o: rogue.c rogue.h
-rooms.o: rooms.c rogue.h 
-save.o: save.c rogue.h
-scrolls.o: scrolls.c rogue.h 
-status.o: status.c rogue.h
-sticks.o: sticks.c rogue.h
-things.o: things.c rogue.h
-trader.o: trader.c rogue.h
-urprint.o: urprint.c rogue.h
-	cc $(CFLAGS) -c urprint.c
-vers.o: vers.c
-weapons.o: weapons.c rogue.h
-wizard.o: wizard.c rogue.h
+LD	      = cc
+
+LDFLAGS	      = $(COMPFLAGS)
+
+LIBS	      = -lcurses
+
+LINTLIBS      =
+
+LINTFLAGS     = -u $(CFLAGS)
+
+MAKEFILE      = Makefile
+
+OBJS	      = armor.o \
+		artifact.o \
+		bag.o \
+		chase.o \
+		command.o \
+		daemon.o \
+		daemons.o \
+		encumb.o \
+		fight.o \
+		getplay.o \
+		ident.o \
+		init.o \
+		io.o \
+		list.o \
+		magic.o \
+		main.o \
+		maze.o \
+		misc.o \
+		monsdata.o \
+		monsters.o \
+		move.o \
+		newlvl.o \
+		options.o \
+		pack.o \
+		passages.o \
+		player.o \
+		potions.o \
+		random.o \
+		rings.o \
+		rip.o \
+		rogue.o \
+		rooms.o \
+		save.o \
+		scrolls.o \
+		status.o \
+		sticks.o \
+		things.o \
+		trader.o \
+		vers.o \
+		weapons.o \
+		wizard.o
+
+PRINT	      = pr
+
+PRINTFLAGS    =
+
+LP	      = lp
+
+LPFLAGS       = 
+
+PROGRAM       = a.out
+
+SHELL	      = /bin/sh
+
+SRCS	      = armor.c \
+		artifact.c \
+		bag.c \
+		chase.c \
+		command.c \
+		daemon.c \
+		daemons.c \
+		encumb.c \
+		fight.c \
+		getplay.c \
+		ident.c \
+		init.c \
+		io.c \
+		list.c \
+		magic.c \
+		main.c \
+		maze.c \
+		misc.c \
+		monsdata.c \
+		monsters.c \
+		move.c \
+		newlvl.c \
+		options.c \
+		pack.c \
+		passages.c \
+		player.c \
+		potions.c \
+		random.c \
+		rings.c \
+		rip.c \
+		rogue.c \
+		rooms.c \
+		save.c \
+		scrolls.c \
+		status.c \
+		sticks.c \
+		things.c \
+		trader.c \
+		vers.c \
+		weapons.c \
+		wizard.c
+
+all:		$(PROGRAM)
+
+$(PROGRAM):     $(OBJS) $(LIBS) $(MAKEFILE)
+		@echo "Linking $(PROGRAM) ..."
+		@$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o $(PROGRAM)
+		@echo "done"
+
+clean:;		@rm -f $(OBJS) core
+
+clobber:;	@rm -f $(OBJS) $(PROGRAM) core tags
+
+depend:;	@mkmf -f $(MAKEFILE) ROOT=$(ROOT)
+
+echo:;		@echo $(HDRS) $(SRCS)
+
+-1:;		@ctags -wx $(HDRS) $(SRCS)
+
+install:	$(PROGRAM)
+		@echo Installing $(PROGRAM) in $(DEST)
+		@-strip $(PROGRAM)
+		@if [ $(DEST) != . ]; then \
+		(rm -f $(DEST)/$(PROGRAM); $(INSTALL) -d $(DEST); $(INSTALL) $(PROGRAM) $(DEST)); fi
+
+lint:		$(LINTLIBS) $(SRCS) $(HDRS) $(EXTHDRS)
+		lint $(LINTFLAGS) $(LINTLIBS) $(SRCS)
+
+print:;		@$(PRINT) $(PRINTFLAGS) $(HDRS) $(SRCS) | $(LP) $(LPFLAGS)
+
+tags:           $(HDRS) $(SRCS); @ctags $(HDRS) $(SRCS)
+
+update:		$(DEST)/$(PROGRAM)
+
+touch:;		@touch $(SRCS) $(HDRS)
+
+$(DEST)/$(PROGRAM): $(SRCS) $(LIBS) $(HDRS) $(EXTHDRS)
+		@$(MAKE) -f $(MAKEFILE) ROOT=$(ROOT) DEST=$(DEST) install
+###
+armor.o: rogue.h
+artifact.o: rogue.h
+bag.o: rogue.h
+chase.o: rogue.h
+command.o: rogue.h
+daemon.o: rogue.h
+daemons.o: rogue.h
+encumb.o: rogue.h
+fight.o: rogue.h
+getplay.o: rogue.h
+ident.o: rogue.h
+init.o: rogue.h
+io.o: rogue.h
+list.o: rogue.h
+magic.o: rogue.h
+main.o: rogue.h
+maze.o: rogue.h
+misc.o: rogue.h
+monsdata.o: rogue.h
+monsters.o: rogue.h
+move.o: rogue.h
+newlvl.o: rogue.h
+options.o: rogue.h
+pack.o: rogue.h
+passages.o: rogue.h
+player.o: rogue.h
+potions.o: rogue.h
+random.o: rogue.h
+rings.o: rogue.h
+rip.o: rogue.h
+rogue.o: rogue.h
+rooms.o: rogue.h
+save.o: rogue.h
+scrolls.o: rogue.h
+status.o: rogue.h
+sticks.o: rogue.h
+things.o: rogue.h
+trader.o: rogue.h
+weapons.o: rogue.h
+wizard.o: rogue.h
