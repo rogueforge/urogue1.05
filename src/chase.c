@@ -1,819 +1,924 @@
 /*
- * Last Modified: Jan 5, 1991
+ * Last Modified: Oct 27, 1992
  */
+
 /*
  * Code for one object to chase another
  *
  */
 
+#include <stdlib.h>
 #include <ctype.h>
+#include <limits.h>
 #include "rogue.h"
-#include "stepok.h"
-
-#define	MAXINT	32767
-#define	MININT	-32767
-
-/* Movement penalties */
-#define SHOTPENALTY 2		/* In line of sight of missile */
-#define DOORPENALTY 1		/* Moving out of current room */
-
-coord ch_ret;				/* Where chasing takes you */
-struct object *pick_weap();		/* find monster's favorite weapon */
 
 /*
- * runners:
- *	Make all the running monsters move.
- */
+    do_chase()
+        Make one thing chase another.
+*/
 
-runners()	/* with monsters now fighting each other, this routine
-		have been enhanced and may need more work yet */
+void
+do_chase(struct thing *th, int flee)
 {
-    register struct linked_list *item;
-    register struct thing *tp;
+    struct room *rer, *ree, /* room of chaser, room of chasee */
+                *old_room,  /* old room of monster */
+                *new_room;  /* new room of monster */
 
-    for (item = mlist; item != NULL; item = next_mons) {
-	curr_mons = item;
-	next_mons = next(curr_mons); /* Get next item now since monster may disappear */
-	tp = THINGPTR(item);
+    int i, mindist = INT_MAX, maxdist = INT_MIN, dist = INT_MIN;
 
-	if (on(*tp, ISHELD) && rnd(tp->t_stats.s_str+tp->t_stats.s_lvl) > 10+rnd(50)) {
-	    turn_off(*tp, ISHELD);
-	    turn_on(*tp, ISRUN);
-	    turn_off(*tp, ISDISGUISE);
-	    tp->t_dest = &hero;
-	    if (tp->t_stats.s_hpt < rnd(tp->maxstats.s_hpt))
-		turn_on(*tp, ISFLEE);
-	    if (cansee(tp->t_pos.y, tp->t_pos.x))
-		msg("The %s breaks free!", monsters[tp->t_index].m_name);
-	}
-	if (off(*tp, ISHELD) && on(*tp, ISRUN)) {
-	    register bool flee;
+    int last_door = -1,     /* Door we just came from */
+        stoprun = FALSE,    /* TRUE means we are there */
+        rundoor,            /* TRUE means run to a door */
+        hit_bad,            /* TRUE means hit bad monster */
+        mon_attack;         /* TRUE means find a monster to hit */
 
-	    /* Should monster run away? */
-	    flee = on(*tp, ISFLEE) ||
-		((tp->t_dest == &hero) && on(player, ISINWALL) &&
-		 off(*tp, CANINWALL) && off(*tp, ISFAMILIAR));
-
-	    if (off(*tp, ISSLOW) || tp->t_turn) {
-		doctor(tp);
-		do_chase(tp, flee);
-	    }
-	    if (curr_mons && (on(*tp, ISHASTE) ||
-			((on(*tp, CANFLY) || on(*tp, ISFAST)) && 
-			DISTANCE(hero.y, hero.x, tp->t_pos.y, tp->t_pos.x) >= 4))) {
-		doctor(tp);
-		do_chase(tp, flee);
-	    }
-	    if (curr_mons) {
-		tp->t_turn ^= TRUE;
-		tp->t_wasshot ^= FALSE;	/* Not shot anymore */
-	    }
-	}
-    }
-    curr_mons = next_mons = NULL;
-}
-
-/*
- * do_chase:
- *	Make one thing chase another.
- */
-
-do_chase(th, flee)
-register struct thing *th;
-register bool flee;
-{
-    register struct room *rer, *ree,	/* room of chaser, room of chasee */
-			*old_room,	/* old room of monster */
-			*new_room;	/* new room of monster */
-    register int mindist = MAXINT, maxdist = MININT, dist = MININT, i,
-		 last_door = -1;	/* Door we just came from */
-    register bool stoprun = FALSE,	/* TRUE means we are there */
-		  rundoor;		/* TRUE means run to a door */
-    register char sch;
+    int    sch;
     struct linked_list *item;
-    coord this;				/* Temporary destination for chaser */
-    bool hit_bad,			/* TRUE means hit bad monster */
-	mon_attack;			/* TRUE means find a monster to hit */
+    coord   this;           /* Temporary destination for chaser */
+
+    if (!th->t_ischasing)
+        return;
 
     /* Make sure the monster can move */
-    if (th->t_no_move != 0) {
-	th->t_no_move--;
-	return;
+
+    if (th->t_no_move != 0)
+    {
+        th->t_no_move--;
+        return;
     }
 
     /*
-     * Bad monsters check for a good monster to hit,
-     * friendly monsters check for a bad monster to hit.
+     * Bad monsters check for a good monster to hit, friendly monsters
+     * check for a bad monster to hit.
      */
+
     mon_attack = FALSE;
-    if (good_monster(*th)) {
-	hit_bad = TRUE;
-	mon_attack = TRUE;
-    }
-    else if (on(*th, ISMEAN)) { 
-	hit_bad = FALSE;
-	mon_attack = TRUE;
-    }
 
-    if (mon_attack) {
-	struct linked_list *mon_to_hit, *f_mons_a();
-
-	if ((mon_to_hit=f_mons_a(th->t_pos.y, th->t_pos.x, hit_bad))) {
-	    mon_mon_attack(th, mon_to_hit, pick_weap(th), NOTHROWN);
-	    return;
-	}
+    if (good_monster(*th))
+    {
+        hit_bad = TRUE;
+        mon_attack = TRUE;
+    }
+    else if (on(*th, ISMEAN))
+    {
+        hit_bad = FALSE;
+        mon_attack = TRUE;
     }
 
-    rer = roomin(&th->t_pos);	/* Find room of chaser */
-    ree = roomin(th->t_dest);	/* Find room of chasee */
+    if (mon_attack)
+    {
+        struct linked_list  *mon_to_hit;
+
+        if ((mon_to_hit = f_mons_a(th->t_pos.y, th->t_pos.x, hit_bad)))
+        {
+            mon_mon_attack(th, mon_to_hit, pick_weap(th), NOTHROWN);
+            return;
+        }
+    }
+
+    rer = roomin(th->t_pos);            /* Find room of chaser */
+    ree = roomin(th->t_chasee->t_pos);  /* Find room of chasee */
 
     /*
      * We don't count doors as inside rooms for this routine
      */
+
     if (mvwinch(stdscr, th->t_pos.y, th->t_pos.x) == DOOR)
-	rer = NULL;
-    this = *th->t_dest;
+        rer = NULL;
+
+    this = th->t_chasee->t_pos;
 
     /*
      * If we are not in a corridor and not a phasing monster, then if we
      * are running after the player, we run to a door if he is not in the
-     * same room. If we are fleeing, we run to a door if he IS in the same
-     * room.  Note:  We don't bother with doors in mazes.
+     * same room. If we are fleeing, we run to a door if he IS in the
+     * same room.  Note:  We don't bother with doors in mazes.
      */
-    if (levtype != MAZELEV && rer != NULL && off(*th, CANINWALL)) {
-	if (flee) rundoor = (rer == ree);
-	else rundoor = (rer != ree);
+
+    if (levtype != MAZELEV && rer != NULL && off(*th, CANINWALL))
+    {
+        if (flee)
+            rundoor = (rer == ree);
+        else
+            rundoor = (rer != ree);
     }
-    else rundoor = FALSE;
+    else
+        rundoor = FALSE;
 
-    if (rundoor) {
-	coord exit;	/* A particular door */
-	int exity, exitx;	/* Door's coordinates */
+    if (rundoor)
+    {
+        coord   d_exit;   /* A particular door */
+        int exity, exitx;   /* Door's coordinates */
 
-	if (th->t_doorgoal != -1) {	/* Do we already have the goal? */
-	    this = rer->r_exit[th->t_doorgoal];
-	    dist = 0;	/* Indicate that we have our door */
-	}
+        if (th->t_doorgoal != -1)
+        { /* Do we already have the goal? */
+            this = rer->r_exit[th->t_doorgoal];
+            dist = 0;   /* Indicate that we have our door */
+        }
+        else
+            for (i = 0; i < rer->r_nexits; i++)
+            {   /* Loop through doors */
+                d_exit = rer->r_exit[i];
+                exity = d_exit.y;
+                exitx = d_exit.x;
 
-	else for (i = 0; i < rer->r_nexits; i++) {	/* Loop through doors */
-	    exit = rer->r_exit[i];
-	    exity = exit.y;
-	    exitx = exit.x;
+                /* Avoid secret doors */
+                if (mvwinch(stdscr, exity, exitx) == DOOR)
+                {
+                    /* Were we just on this door? */
+                    if (ce(d_exit, th->t_oldpos))
+                        last_door = i;
+                    else
+                    {
+                        dist = DISTANCE(th->t_chasee->t_pos, d_exit);
 
-	    /* Avoid secret doors */
-	    if (mvwinch(stdscr, exity, exitx) == DOOR) {
-		/* Were we just on this door? */
-		if (ce(exit, th->t_oldpos)) last_door = i;
+                        /*
+                         * If fleeing, we want to
+                         * maximize distance from
+                         * door to what we flee, and
+                         * minimize distance from
+                         * door to us.
+                         */
 
-		else {
-		    dist = DISTANCE(th->t_dest->y, th->t_dest->x, exity, exitx);
+                        if (flee)
+                            dist-=DISTANCE(th->t_pos,d_exit);
 
-		    /* If fleeing, we want to maximize distance from door to
-		     * what we flee, and minimize distance from door to us.
-		     */
-		    if (flee)
-		       dist -= DISTANCE(th->t_pos.y, th->t_pos.x, exity, exitx);
+                        /*
+                         * Maximize distance if
+                         * fleeing, otherwise
+                         * minimize it
+                         */
 
-		    /* Maximize distance if fleeing, otherwise minimize it */
-		    if ((flee && (dist > maxdist)) ||
-			(!flee && (dist < mindist))) {
-			th->t_doorgoal = i;	/* Use this door */
-			this = exit;
-			mindist = maxdist = dist;
-		    }
-		}
-	    }
-	}
+                        if ((flee && (dist > maxdist)) ||
+                            (!flee && (dist < mindist)))
+                        {
+                            th->t_doorgoal = i; /* Use this door */
+                            this = d_exit;
+                            mindist = maxdist = dist;
+                        }
+                    }
+                }
+            }
 
-	/* Could we not find a door? */
-	if (dist == MININT) {
-	    /* If we were on a door, go ahead and use it */
-	    if (last_door != -1) {
-		th->t_doorgoal = last_door;
-		this = th->t_oldpos;
-		dist = 0;	/* Indicate that we found a door */
-	    }
-	}
+        /* Could we not find a door? */
+        if (dist == INT_MIN)
+        {
+            /* If we were on a door, go ahead and use it */
+            if (last_door != -1)
+            {
+                th->t_doorgoal = last_door;
+                this = th->t_oldpos;
+                dist = 0;   /* Indicate that we found a door */
+            }
+        }
 
-	/* Indicate that we do not want to flee from the door */
-	if (dist != MININT) flee = FALSE;
+        /* Indicate that we do not want to flee from the door */
+        if (dist != INT_MIN)
+            flee = FALSE;
     }
+    else
+        th->t_doorgoal = -1;    /* Not going to any door */
 
-    else th->t_doorgoal = -1;	/* Not going to any door */
     /*
-     * this now contains what we want to run to this time
-     * so we run to it.  If we hit it we either want to fight it
-     * or stop running
+     * this now contains what we want to run to this time so we run to
+     * it.  If we hit it we either want to fight it or stop running
      */
-    if (!chase(th, &this, flee)) {
-	if (ce(ch_ret, hero)) {
-	    /* merchants try to sell something */
-	    if (on(*th, CANSELL)) {
-		sell(th);
-		return;
-	    }
-	    else if (off(*th, ISFRIENDLY) && off(*th, ISCHARMED)
-		&& (off(*th, CANFLY) || (on(*th, CANFLY) && rnd(2))))
-		attack(th, pick_weap(th), FALSE);
-	    return;
-	}
-	else if (on(*th, NOMOVE))
-	    stoprun = TRUE;
+
+    if (!chase(th, &this, flee))
+    {
+        if (ce(th->t_nxtpos, hero))
+        {
+            /* merchants try to sell something */
+
+            if (on(*th, CANSELL))
+            {
+                sell(th);
+                return;
+            }
+            else if (off(*th, ISFRIENDLY) && off(*th, ISCHARMED)
+                    && (off(*th, CANFLY) || (on(*th, CANFLY) && rnd(2))))
+                    attack(th, pick_weap(th), FALSE);
+                return;
+        }
+        else if (on(*th, NOMOVE))
+            stoprun = TRUE;
     }
 
-    if (!curr_mons) return;	/* Did monster get itself killed? */
+    if (!curr_mons)
+        return;     /* Did monster get itself killed? */
 
-    if (on(*th, NOMOVE)) 
-	return;
+    if (on(*th, NOMOVE))
+        return;
 
     /* If we have a scavenger, it can pick something up */
-    if ((item = find_obj(ch_ret.y, ch_ret.x, TRUE)) != NULL) {
-	register struct object *obj = OBJPTR(item);
 
-	if (on(*th, ISSCAVENGE) || 
-		((on(*th, CANWIELD) || on(*th, CANSHOOT))
-			&& (obj->o_type == WEAPON || obj->o_type == ARMOR))
-		|| (on(*th, CANCAST) && is_magic(obj))) {
-	    rem_obj(item, FALSE);
-	    attach(th->t_pack, item);
-	}
+    if ((item = find_obj(th->t_nxtpos.y, th->t_nxtpos.x)) != NULL)
+    {
+        struct object   *obj = OBJPTR(item);
+
+        if (on(*th, ISSCAVENGE) ||
+            ((on(*th, CANWIELD) || on(*th, CANSHOOT))
+             && (obj->o_type == WEAPON || obj->o_type == ARMOR))
+            || (on(*th, CANCAST) && is_magic(obj))) {
+            rem_obj(item, FALSE);
+            attach(th->t_pack, item);
+        }
     }
 
     mvwaddch(cw, th->t_pos.y, th->t_pos.x, th->t_oldch);
-    sch = mvwinch(cw, ch_ret.y, ch_ret.x);
+    sch = mvwinch(cw, th->t_nxtpos.y, th->t_nxtpos.x);
 
     /* Get old and new room of monster */
-    old_room=roomin(&th->t_pos);
-    new_room=roomin(&ch_ret);
+    old_room = roomin(th->t_pos);
+    new_room = roomin(th->t_nxtpos);
 
     /* If the monster can illuminate rooms, check for a change */
-    if (on(*th, HASFIRE)) {
-	/* Is monster entering a room? */
-	if (old_room != new_room && new_room != NULL) {
-	    new_room->r_flags |= HASFIRE;
-	    new_room->r_fires++;
-	    if (cansee(ch_ret.y, ch_ret.x) && new_room->r_fires == 1)
-		light(&hero);
-	}
+    if (on(*th, HASFIRE))
+    {
+        /* Is monster entering a room? */
+        if (old_room != new_room && new_room != NULL)
+        {
+            new_room->r_flags |= HASFIRE;
+            new_room->r_fires++;
+            if (cansee(th->t_nxtpos.y, th->t_nxtpos.x) && new_room->r_fires==1)
+                light(&hero);
+        }
 
-	/* Is monster leaving a room? */
-	if (old_room != new_room && old_room != NULL) {
-	    if (--(old_room->r_fires) <= 0) {
-		old_room->r_flags &= ~HASFIRE;
-		if (cansee(th->t_pos.y, th->t_pos.x)) light(&th->t_pos);
-	    }
-	}
+        /* Is monster leaving a room? */
+        if (old_room != new_room && old_room != NULL)
+        {
+            if (--(old_room->r_fires) <= 0)
+            {
+                old_room->r_flags &= ~HASFIRE;
+                if (cansee(th->t_pos.y, th->t_pos.x))
+                    light(&th->t_pos);
+            }
+        }
     }
 
-    /* If monster is entering player's room and player can see it,
-     * stop the player's running.
+    /*
+     * If monster is entering player's room and player can see it, stop
+     * the player's running.
      */
+
     if (new_room != old_room && new_room != NULL &&
-	new_room == ree && cansee(ch_ret.y, ch_ret.x) &&
-	(off(*th, ISINVIS) || (off(*th, ISSHADOW) || rnd(10) == 0) ||
-	on(player, CANSEE)) && off(*th, CANSURPRISE))
-		running = FALSE;
+        new_room == ree && cansee(th->t_nxtpos.y, th->t_nxtpos.x) &&
+        (off(*th, ISINVIS) || (off(*th, ISSHADOW) || rnd(10) == 0) ||
+         on(player, CANSEE)) && off(*th, CANSURPRISE))
+        running = FALSE;
 
-    if (rer != NULL && (rer->r_flags & ISDARK) && 
-	!(rer->r_flags & HASFIRE) && sch == FLOOR &&
-	DISTANCE(ch_ret.y, ch_ret.x, th->t_pos.y, th->t_pos.x) < see_dist &&
-	off(player, ISBLIND))
-	    th->t_oldch = ' ';
+    if (rer != NULL && (rer->r_flags & ISDARK) &&
+        !(rer->r_flags & HASFIRE) && sch == FLOOR &&
+         DISTANCE(th->t_nxtpos, th->t_pos) < see_dist &&
+        off(player, ISBLIND))
+        th->t_oldch = ' ';
     else
-	th->t_oldch = sch;
+        th->t_oldch = sch;
 
-    if (cansee(ch_ret.y, ch_ret.x) &&
-	off(*th, ISINWALL) &&
-	((off(*th, ISINVIS) && (off(*th, ISSHADOW) || rnd(100) < 10)) ||
-	 on(player, CANSEE)) &&
-	off(*th, CANSURPRISE))
-        mvwaddch(cw, ch_ret.y, ch_ret.x, th->t_type);
-    mvwaddch(mw, th->t_pos.y, th->t_pos.x, ' ');
-    mvwaddch(mw, ch_ret.y, ch_ret.x, th->t_type);
+    if (cansee(th->t_nxtpos.y, th->t_nxtpos.x) &&
+      off(*th, ISINWALL) &&
+      ((off(*th, ISINVIS) && (off(*th, ISSHADOW) || rnd(100) < 10)) ||
+      on(player, CANSEE)) &&
+      off(*th, CANSURPRISE))
+        mvwaddch(cw, th->t_nxtpos.y, th->t_nxtpos.x, th->t_type);
+
+    mvwaddch(mw, th->t_pos.y, th->t_pos.x, (char) ' ');
+    mvwaddch(mw, th->t_nxtpos.y, th->t_nxtpos.x, th->t_type);
 
     /* Record monster's last position (if new one is different) */
-    if (!ce(ch_ret, th->t_pos)) 
-	th->t_oldpos = th->t_pos;
-    th->t_pos = ch_ret;		/* Mark the monster's new position */
+
+    if (!ce(th->t_nxtpos, th->t_pos))
+        th->t_oldpos = th->t_pos;
+
+    th->t_pos = th->t_nxtpos; /* Mark the monster's new position */
 
     /* If the monster is on a trap, trap it */
-    sch = mvinch(ch_ret.y, ch_ret.x);
-    if (isatrap(sch)) {
-	debug("Monster trapped by %c.", sch);
-	if (cansee(ch_ret.y, ch_ret.x)) th->t_oldch = sch;
-	be_trapped(th, &ch_ret);
-    }
 
+    sch = mvinch(th->t_nxtpos.y, th->t_nxtpos.x);
+
+    if (isatrap(sch))
+    {
+        debug("Monster trapped by %c.", sch);
+
+        if (cansee(th->t_nxtpos.y, th->t_nxtpos.x))
+            th->t_oldch = sch;
+
+        be_trapped(th, th->t_nxtpos);
+    }
 
     /* And stop running if need be */
-    if (stoprun && ce(th->t_pos, *(th->t_dest)))
-	turn_off(*th, ISRUN);
+
+    if (stoprun && ce(th->t_pos, th->t_chasee->t_pos))
+    {
+        th->t_ischasing = FALSE;
+        turn_off(*th, ISRUN);
+    }
 }
 
 /*
- * runto:
- *	Set a monster running after something
- *	or stop it from running (for when it dies)
- */
+    chase_it()
+        Set a monster running after something or stop it from running (for
+        when it dies)
+*/
 
-runto(runner, spot)
-register coord *runner;
-coord *spot;
+void
+chase_it(coord *runner, struct thing *th)
 {
-    register struct linked_list *item;
-    register struct thing *tp;
+    struct linked_list  *item;
+    struct thing    *tp;
 
-    /*
-     * If we couldn't find him, something is funny
-     */
-    if ((item = find_mons(runner->y, runner->x)) == NULL) {
-	debug("CHASER '%s'", unctrl(winat(runner->y, runner->x)));
-	return;
+    /* If we couldn't find him, something is funny */
+
+    if ((item = find_mons(runner->y, runner->x)) == NULL)
+    {
+        debug("CHASER '%s'", unctrl(winat(runner->y, runner->x)));
+        return;
     }
+
     tp = THINGPTR(item);
-    /*
-     * Start the beastie running
-     */
-    tp->t_dest = spot;
+
+    /* Start the beastie running */
+
+    tp->t_ischasing = TRUE;
+    tp->t_chasee    = th;
+
     turn_on(*tp, ISRUN);
     turn_off(*tp, ISDISGUISE);
+
+    return;
 }
 
 /*
- * chase:
- *	Find the spot for the chaser(er) to move closer to the
- *	chasee(ee).  Returns TRUE if we want to keep on chasing later
- *	FALSE if we reach the goal.
- */
+    chase()
+        Find the spot for the chaser(er) to move closer to the chasee(ee).
+        Returns TRUE if we want to keep on chasing later FALSE if we reach the
+        goal.
+*/
 
-chase(tp, ee, flee)
-struct thing *tp;
-coord *ee;
-register bool flee;
+int
+chase(struct thing *tp, coord *ee, int flee)
 {
-    register int x, y;
-    register int dist, thisdist, monst_dist = MAXINT;
-    register struct linked_list *item, *weapon;
-    register coord *er = &tp->t_pos, *shoot_dir;
-    register char ch, mch;
-    register bool next_player = FALSE;
+    int x, y;
+    int dist, thisdist, monst_dist = INT_MAX;
+    struct linked_list  *weapon;
+    coord   *er = &tp->t_pos;
+    coord shoot;
+    coord *shootit_dir;
+    int ch;
+    char   mch;
+    int    next_player = FALSE;
 
-    /*
-     * Take care of shooting directions
-     */
+    /* Take care of shooting directions */
+
     if (on(*tp, CANBREATHE) || on(*tp, CANSHOOT) || on(*tp, CANCAST))
-	if (good_monster(*tp)) {
-	    shoot_dir = find_shoot(tp); /* find a mean monster */
-	    if (wizard && shoot_dir)
-		msg("Found monster to attack towards (%d,%d).", 
-			shoot_dir->x,shoot_dir->y);
-	}
-	else 
-	    shoot_dir = can_shoot(er, ee);    /* shoot hero */
+    {
+        if (good_monster(*tp))
+        {
+            shootit_dir = find_shoot(tp, &shoot); /* find a mean monster */
+
+            if (wizard && shootit_dir)
+                msg("Found monster to attack towards (%d,%d).",
+                    shootit_dir->x, shootit_dir->y);
+        }
+        else
+            shootit_dir = can_shoot(er, ee, &shoot);  /* shoot hero */
+    }
 
     /*
-     * If the thing is confused, let it move randomly. Some
-     * monsters are slightly confused all of the time.
+     * If the thing is confused, let it move randomly. Some monsters are
+     * slightly confused all of the time.
      */
+
     if ((on(*tp, ISHUH) && rnd(10) < 8) ||
-	((on(*tp, ISINVIS) || on(*tp, ISSHADOW)) && rnd(100) < 20) ||
-	(on(player, ISINVIS) && off(*tp, CANSEE))) { /* Player is invisible */
-	/* get a valid random move */
-	ch_ret = *rndmove(tp);
-	dist = DISTANCE(ch_ret.y, ch_ret.x, ee->y, ee->x);
+        ((on(*tp, ISINVIS) || on(*tp, ISSHADOW)) && rnd(100) < 20) ||
+        (on(player, ISINVIS) && off(*tp, CANSEE)))
+    {   /* Player is invisible */
 
-	if (on(*tp, ISHUH) && rnd(20) == 0)  /* monster might lose confusion */
-	    turn_off(*tp, ISHUH);
+        /* get a valid random move */
 
-	/*
-	 * check to see if random move takes creature away from player
-	 * if it does then turn off ISHELD
-	 */
-	if (dist > 1 && on(*tp, DIDHOLD)) {
-	     turn_off(*tp, DIDHOLD);
-	     turn_on(*tp, CANHOLD);
-	     if (--hold_count == 0) 
-		 turn_off(player, ISHELD);
-	}
+        tp->t_nxtpos = rndmove(tp);
+
+        dist = DISTANCE(tp->t_nxtpos, *ee);
+
+        if (on(*tp, ISHUH) && rnd(20) == 0) /* monster might lose confusion */
+            turn_off(*tp, ISHUH);
+
+        /*
+         * check to see if random move takes creature away from
+         * player if it does then turn off ISHELD
+         */
+
+        if (dist > 1 && on(*tp, DIDHOLD))
+        {
+            turn_off(*tp, DIDHOLD);
+            turn_on(*tp, CANHOLD);
+
+            if (--hold_count == 0)
+                turn_off(player, ISHELD);
+        }
+    } /* If we can breathe, we may do so */
+    else if (on(*tp, CANBREATHE) && (shootit_dir) && (rnd(100) < 67) &&
+         (off(player, ISDISGUISE) || (rnd(tp->t_stats.s_lvl) > 6)) &&
+         (DISTANCE(*er, *ee) < BOLT_LENGTH * BOLT_LENGTH))
+    {
+        short   chance;
+        char    *breath;
+
+        /* Will it breathe at random */
+
+        if (on(*tp, CANBRANDOM))
+        {
+            if (rnd(level / 20) == 0 && tp->t_index != nummonst + 1
+                && !(good_monster(*tp)))
+                turn_off(*tp, CANBRANDOM);
+
+            /* Select type of breath */
+
+            chance = rnd(100);
+
+            if (chance < 11)
+                breath = "acid";
+            else if (chance < 22)
+                breath = "flame";
+            else if (chance < 33)
+                breath = "lightning bolt";
+            else if (chance < 44)
+                breath = "chlorine gas";
+            else if (chance < 55)
+                breath = "ice";
+            else if (chance < 66)
+                breath = "nerve gas";
+            else if (chance < 77)
+                breath = "sleeping gas";
+            else if (chance < 88)
+                breath = "slow gas";
+            else
+                breath = "fear gas";
+        } /* Or can it breathe acid? */
+        else if (on(*tp, CANBACID))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBACID);
+
+            breath = "acid";
+        } /* Or can it breathe fire */
+        else if (on(*tp, CANBFIRE))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBFIRE);
+
+            breath = "flame";
+        } /* Or can it breathe electricity? */
+        else if (on(*tp, CANBBOLT))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBBOLT);
+
+            breath = "lightning bolt";
+        } /* Or can it breathe gas? */
+        else if (on(*tp, CANBGAS))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBGAS);
+
+            breath = "chlorine gas";
+        } /* Or can it breathe ice? */
+        else if (on(*tp, CANBICE))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBICE);
+
+            breath = "ice";
+        }
+        else if (on(*tp, CANBPGAS))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBPGAS);
+
+            breath = "nerve gas";
+        }
+        else if (on(*tp, CANBSGAS))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBSGAS);
+
+            breath = "sleeping gas";
+        }
+        else if (on(*tp, CANBSLGAS))
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBSLGAS);
+
+            breath = "slow gas";
+        }
+        else
+        {
+            if (rnd(level / 20) == 0)
+                if (!(good_monster(*tp)))
+                    turn_off(*tp, CANBFGAS);
+
+            breath = "fear gas";
+        }
+
+        shoot_bolt(tp, *er, *shootit_dir, (tp == THINGPTR(fam_ptr)),
+               tp->t_index, breath, roll(tp->t_stats.s_lvl, 6));
+
+        tp->t_nxtpos = *er;
+
+        dist = DISTANCE(tp->t_nxtpos, *ee);
+
+        if (!curr_mons)
+            return (TRUE);
     }
+    else if (shootit_dir && on(*tp, CANCAST) &&
+         (off(player, ISDISGUISE) || (rnd(tp->t_stats.s_lvl) > 6)))
+    {
+        /*
+            If we can cast spells we might do so - even if adjacent fleeing
+            monsters are restricted to certain spells
+        */
 
-    /* If we can breathe, we may do so */
-    else if (on(*tp, CANBREATHE) && (shoot_dir) && (rnd(100) < 67) &&
-	     (off(player, ISDISGUISE) || (rnd(tp->t_stats.s_lvl) > 6)) &&
-	     (DISTANCE(er->y, er->x, ee->y, ee->x) < BOLT_LENGTH*BOLT_LENGTH)) {
-		register short chance;
-		register char *breath;
-
-		/* Will it breathe at random */
-		if (on(*tp, CANBRANDOM)) {
-		    if (rnd(level/20) == 0 && tp->t_index != nummonst+1
-				&& !(good_monster(*tp)))
-			turn_off(*tp, CANBRANDOM);
-
-		    /* Select type of breath */
-		    chance = rnd(100);
-		    if (chance < 11) breath = "acid";
-		    else if (chance < 22) breath = "flame";
-		    else if (chance < 33) breath = "lightning bolt";
-		    else if (chance < 44) breath = "chlorine gas";
-		    else if (chance < 55) breath = "ice";
-		    else if (chance < 66) breath = "nerve gas";
-		    else if (chance < 77) breath = "sleeping gas";
-		    else if (chance < 88) breath = "slow gas";
-		    else breath = "fear gas";
-		}
-
-		/* Or can it breathe acid? */
-		else if (on(*tp, CANBACID)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBACID);
-		    breath = "acid";
-		}
-
-		/* Or can it breathe fire */
-		else if (on(*tp, CANBFIRE)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBFIRE);
-		    breath = "flame";
-		}
-
-		/* Or can it breathe electricity? */
-		else if (on(*tp, CANBBOLT)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBBOLT);
-		    breath = "lightning bolt";
-		}
-
-		/* Or can it breathe gas? */
-		else if (on(*tp, CANBGAS)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBGAS);
-		    breath = "chlorine gas";
-		}
-
-		/* Or can it breathe ice? */
-		else if (on(*tp, CANBICE)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBICE);
-		    breath = "ice";
-		}
-
-		else if (on(*tp, CANBPGAS)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBPGAS);
-		    breath = "nerve gas";
-		}
-
-		else if (on(*tp, CANBSGAS)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBSGAS);
-		    breath = "sleeping gas";
-		}
-
-		else if (on(*tp, CANBSLGAS)) {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBSLGAS);
-		    breath = "slow gas";
-		}
-
-		else {
-		    if (rnd(level/20) == 0)
-			if (!(good_monster(*tp)))
-			turn_off(*tp, CANBFGAS);
-		    breath = "fear gas";
-		}
-
-		shoot_bolt(tp, *er, *shoot_dir, (tp == THINGPTR(fam_ptr)),
-			   tp->t_index, breath, roll(tp->t_stats.s_lvl, 6));
-
-		ch_ret = *er;
-		dist = DISTANCE(ch_ret.y, ch_ret.x, ee->y, ee->x);
-		if (!curr_mons) return(TRUE);
-	}
-
-    /* 
-     * If we can cast spells we might do so - even if adjacent
-     * fleeing monsters are restricted to certain spells
-     */
-    else if (shoot_dir && on(*tp, CANCAST) && 
-	     (off(player, ISDISGUISE) || (rnd(tp->t_stats.s_lvl) > 6))) {
-	incant(tp, *shoot_dir);
-	ch_ret = *er;
-	dist = DISTANCE(ch_ret.y, ch_ret.x, ee->y, ee->x);
+        incant(tp, *shootit_dir);
+        tp->t_nxtpos = *er;
+        dist = DISTANCE(tp->t_nxtpos, *ee);
     }
+    else if (shootit_dir && on(*tp, CANSHOOT) && (weapon = get_hurl(tp)) &&
+         (off(*tp, ISFLEE) || rnd(DISTANCE(*er, *ee)) > 2) &&
+         (off(player, ISDISGUISE) || (rnd(tp->t_stats.s_lvl) > 6)))
+    {
+        /*
+            Should we shoot or throw something? fleeing monsters may to shoot
+            anyway if far enough away
+        */
 
-    /* 
-     * Should we shoot or throw something?
-     * fleeing monsters may to shoot anyway if far enough away
-     */
-    else if (shoot_dir && on(*tp, CANSHOOT) && (weapon = get_hurl(tp)) &&
-	    (off(*tp, ISFLEE) || rnd(DISTANCE(er->y,er->x,ee->y,ee->x)) > 2) &&
-	     (off(player, ISDISGUISE) || (rnd(tp->t_stats.s_lvl) > 6)) ) {
-	missile(shoot_dir->y, shoot_dir->x, weapon, tp);
-	ch_ret = *er;
-	dist = DISTANCE(ch_ret.y, ch_ret.x, ee->y, ee->x);
+        missile(shootit_dir->y, shootit_dir->x, weapon, tp);
+        tp->t_nxtpos = *er;
+        dist = DISTANCE(tp->t_nxtpos, *ee);
     }
+    else
+    {
+        /*
+            Otherwise, find the empty spot next to the chaser that is closest
+            to the chasee.
+        */
+        int ey, ex;
+        struct room *rer, *ree;
+        int dist_to_old = INT_MIN;   /* Dist from goal to old position */
 
-    /*
-     * Otherwise, find the empty spot next to the chaser that is
-     * closest to the chasee.
-     */
-    else {
-	register int ey, ex;
-	register struct room *rer, *ree;
-	register int dist_to_old = MININT; /* Dist from goal to old position */
+        /* Get rooms */
+        rer = roomin(*er);
+        ree = roomin(*ee);
 
-	/* Get rooms */
-	rer = roomin(er);
-	ree = roomin(ee);
+        /*
+         * This will eventually hold where we move to get closer If
+         * we can't find an empty spot, we stay where we are.
+         */
 
-	/*
-	 * This will eventually hold where we move to get closer
-	 * If we can't find an empty spot, we stay where we are.
-	 */
-	dist = flee ? 0 : MAXINT;
-	ch_ret = *er;
+        dist = flee ? 0 : INT_MAX;
+        tp->t_nxtpos = *er;
 
-	/* Are we at our goal already? */
-	if (!flee && ce(ch_ret, *ee))
-	    return(FALSE);
+        /* Are we at our goal already? */
 
-	ey = er->y + 1;
-	ex = er->x + 1;
-	for (x = er->x - 1; x <= ex; x++)
-	    for (y = er->y - 1; y <= ey; y++) {
-		coord tryp;
+        if (!flee && ce(tp->t_nxtpos, *ee))
+            return (FALSE);
 
-		/* Don't try off the board */
-		if ((x < 0) || (x >= COLS) || (y < 1) || (y >= LINES - 2))
-		    continue;
+        ey = er->y + 1;
+        ex = er->x + 1;
 
-		/* Don't try the player if not going after the player */
-		/* or he's disguised and monster is dumb */
-		if ( ((off(*tp, ISFLEE) && !ce(hero, *ee)) ||
-			(on(player, ISDISGUISE) && (rnd(tp->t_stats.s_lvl) < 6))
-			|| good_monster(*tp))
-			&& x == hero.x && y == hero.y)
-		    continue;
+        for (x = er->x - 1; x <= ex; x++)
+            for (y = er->y - 1; y <= ey; y++)
+            {
+                coord   tryp;
 
-		tryp.x = x;
-		tryp.y = y;
+                /* Don't try off the board */
 
-		/* Is there a monster on this spot closer to our goal?
-		 * Don't look in our spot or where we were.
-		 */
-		if (!ce(tryp, *er) && !ce(tryp, tp->t_oldpos) &&
-		    isalpha(mch = mvwinch(mw, y, x))) {
-		    register int test_dist;
+                if ((x < 0) || (x >= COLS) || (y < 1) || (y >= LINES - 2))
+                    continue;
 
-		    test_dist = DISTANCE(y, x, ee->y, ee->x);
-		    if (test_dist <= 25 &&   /* Let's be fairly close */
-			test_dist < monst_dist) {
-			/* Could we really move there? */
-			mvwaddch(mw, y, x, ' '); /* Temporarily blank monst */
-			if (diag_ok(er, &tryp, tp)) 
-			    monst_dist = test_dist;
-			mvwaddch(mw, y, x, mch); /* Restore monster */
-		    }
-		}
+                /*
+                 * Don't try the player if not going after
+                 * the player
+                 */
 
-		if (!diag_ok(er, &tryp, tp))
-		    continue;
-		ch = mvwinch(cw, y, x);	/* Screen character */
-		if (on(*tp, ISFLEE) && (ch == PLAYER)) 
-		    next_player = TRUE;
+                /* or he's disguised and monster is dumb */
 
-		/* Stepping on player is NOT okay if we are fleeing */
+                if (((off(*tp, ISFLEE) && !ce(hero, *ee)) ||
+                     (on(player, ISDISGUISE) && (rnd(tp->t_stats.s_lvl) < 6))
+                     || good_monster(*tp))
+                    && x == hero.x && y == hero.y)
+                    continue;
 
-		if (step_ok(y, x, NOMONST, tp) &&
-			(off(*tp, ISFLEE) || ch != PLAYER)) {
-		    /*
-		     * If it is a trap, an intelligent monster may not
-		     * step on it (unless our hero is on top!)
-		     */
-		    if (isatrap(ch)) {
-			if (!(ch == RUSTTRAP) && 
-			    !(ch == FIRETRAP && on(*tp,NOFIRE)) &&
-			    rnd(10) < tp->t_stats.s_intel &&
-			    (y != hero.y || x != hero.x))
-				continue;
-		    }
+                tryp.x = x;
+                tryp.y = y;
 
-		    /*
-		     * OK -- this place counts
-		     */
-		    thisdist = DISTANCE(y, x, ee->y, ee->x);
+                /*
+                 * Is there a monster on this spot closer to
+                 * our goal? Don't look in our spot or where
+                 * we were.
+                 */
 
-		    /* Adjust distance if we are being shot at */
-		    if (tp->t_wasshot && tp->t_stats.s_intel > 5 &&
-			ce(hero, *ee)) {
-			/* Move out of line of sight */
-			if (straight_shot(tryp.y, tryp.x, ee->y, ee->x, (coord *) NULL)) {
-			    if (flee) thisdist -= SHOTPENALTY;
-			    else thisdist += SHOTPENALTY;
-			}
+                if (!ce(tryp, *er) && !ce(tryp, tp->t_oldpos) &&
+                    isalpha((int)(mch = mvwinch(mw, y, x))))
+                {
+                    int test_dist;
 
-			/* But do we want to leave the room? */
-			else if (rer && rer == ree && ch == DOOR)
-			    thisdist += DOORPENALTY;
-		    }
+                    test_dist = DISTANCE(tryp,*ee);
+                    if (test_dist <= 25 &&  /* Let's be fairly close */
+                        test_dist < monst_dist)
+                    {
 
-		    /* Don't move to the last position if we can help it */
-		    if (ce(tryp, tp->t_oldpos)) dist_to_old = thisdist;
+                        /* Could we really move there? */
 
-		    else if ((flee && (thisdist > dist)) ||
-			(!flee && (thisdist < dist))) {
-			ch_ret = tryp;
-			dist = thisdist;
-		    }
-		}
-	    }
+                        mvwaddch(mw, y, x, (char) ' '); /* Temp blank monst */
 
-	/*
-	 * If we are running from the player and he is in our way,
-	 * go ahead and slug him.
-	 */
-	if (next_player && DISTANCE(er->y, er->x, ee->y, ee->x) < dist &&
-	    step_ok(tp->t_dest->y, tp->t_dest->x, NOMONST, tp)) {
-	    ch_ret = *(tp->t_dest);	/* Okay to hit player */
-	    return FALSE;
-	}
+                        if (diag_ok(er, &tryp, tp))
+                            monst_dist = test_dist;
+
+                        mvwaddch(mw, y, x, mch);    /* Restore monster */
+                    }
+                }
+
+                if (!diag_ok(er, &tryp, tp))
+                    continue;
+
+                ch = mvwinch(cw, y, x); /* Screen character */
+
+                if (on(*tp, ISFLEE) && (ch == PLAYER))
+                    next_player = TRUE;
+
+                /*
+                 * Stepping on player is NOT okay if we are
+                 * fleeing
+                 */
+
+                if (step_ok(y, x, NOMONST, tp) &&
+                    (off(*tp, ISFLEE) || ch != PLAYER))
+                {
+
+                    /*
+                     * If it is a trap, an intelligent
+                     * monster may not step on it (unless
+                     * our hero is on top!)
+                     */
+
+                    if (isatrap(ch))
+                    {
+                        if (!(ch == RUSTTRAP) &&
+                            !(ch == FIRETRAP && on(*tp, NOFIRE)) &&
+                            rnd(10) < tp->t_stats.s_intel &&
+                        (y != hero.y || x != hero.x))
+                            continue;
+                    }
+
+                    /*
+                     * OK -- this place counts
+                     */
+
+                    thisdist = DISTANCE(tryp, *ee);
+                    /*
+                     * Adjust distance if we are being
+                     * shot at
+                     */
+
+                    if (tp->t_wasshot && tp->t_stats.s_intel > 5 &&
+                        ce(hero, *ee))
+                    {
+                        /* Move out of line of sight */
+                        if (straight_shot(tryp.y, tryp.x, ee->y, ee->x, NULL))
+                        {
+                            if (flee)
+                                thisdist -= SHOTPENALTY;
+                            else
+                                thisdist += SHOTPENALTY;
+                        }
+
+                        /*
+                         * But do we want to leave
+                         * the room?
+                         */
+                        else if (rer && rer == ree && ch == DOOR)
+                            thisdist += DOORPENALTY;
+                    }
+
+                    /*
+                     * Don't move to the last position if
+                     * we can help it
+                     */
+
+                    if (ce(tryp, tp->t_oldpos))
+                        dist_to_old = thisdist;
+                    else if ((flee && (thisdist > dist)) ||
+                         (!flee && (thisdist < dist)))
+                    {
+                        tp->t_nxtpos = tryp;
+                        dist = thisdist;
+                    }
+                }
+            }
+
+        /*
+         * If we are running from the player and he is in our way, go
+         * ahead and slug him.
+         */
+
+        if (next_player && DISTANCE(*er,*ee) < dist &&
+            step_ok(tp->t_chasee->t_pos.y, tp->t_chasee->t_pos.x, NOMONST, tp))
+        {
+            tp->t_nxtpos = tp->t_chasee->t_pos;    /* Okay to hit player */
+            return(FALSE);
+        }
 
 
-	/*
-	 * If we can't get closer to the player (if that's our goal)
-	 * because other monsters are in the way, just stay put
-	 */
-	if (!flee && ce(hero, *ee) && monst_dist < MAXINT &&
-	    DISTANCE(er->y, er->x, hero.y, hero.x) < dist)
-		ch_ret = *er;
+        /*
+         * If we can't get closer to the player (if that's our goal)
+         * because other monsters are in the way, just stay put
+         */
 
-	/* Do we want to go back to the last position? */
-	else if (dist_to_old != MININT &&      /* It is possible to move back */
-	    ((flee && dist == 0) ||	/* No other possible moves */
-	     (!flee && dist == MAXINT))) {
-	    /* Do we move back or just stay put (default)? */
-	    dist = DISTANCE(er->y, er->x, ee->y, ee->x); /* Current distance */
-	    if (!flee || (flee && (dist_to_old > dist))) ch_ret = tp->t_oldpos;
-	}
+        if (!flee && ce(hero, *ee) && monst_dist < INT_MAX &&
+            DISTANCE(*er, hero) < dist)
+            tp->t_nxtpos = *er;
+
+        /* Do we want to go back to the last position? */
+        else if (dist_to_old != INT_MIN &&   /* It is possible to move back */
+             ((flee && dist == 0) ||        /* No other possible moves */
+              (!flee && dist == INT_MAX)))
+        {
+            /* Do we move back or just stay put (default)? */
+
+            dist = DISTANCE(*er,*ee); /* Current distance */
+
+            if (!flee || (flee && (dist_to_old > dist)))
+                tp->t_nxtpos = tp->t_oldpos;
+        }
     }
 
     /* Make sure we have the real distance now */
-    dist = DISTANCE(ch_ret.y, ch_ret.x, ee->y, ee->x);
+    dist = DISTANCE(tp->t_nxtpos, *ee);
 
     /* Mark monsters in a wall */
-    switch (mvinch(ch_ret.y, ch_ret.x)) {
-	case WALL:
-	case '-':
-	case '|':
-	    turn_on(*tp, ISINWALL);
-	otherwise:
-	    turn_off(*tp, ISINWALL);
+
+    switch(mvinch(tp->t_nxtpos.y, tp->t_nxtpos.x))
+    {
+        case WALL:
+        case '-':
+        case '|':
+            turn_on(*tp, ISINWALL);
+            break;
+        default:
+            turn_off(*tp, ISINWALL);
     }
 
     if (off(*tp, ISFLEE) &&
-	((tp->t_dest != &hero) || off(player, ISINWALL) || on(*tp, CANINWALL)))
-	return (dist != 0);
-
-    /* May actually hit here from a confused move */
-    else return(!ce(ch_ret, hero));
+        !(!SAME_POS((tp->t_chasee->t_pos),hero) || off(player, ISINWALL) || on(*tp, CANINWALL)))
+        return(dist != 0);
+    else /* May actually hit here from a confused move */
+        return(!ce(tp->t_nxtpos, hero));
 }
 
 /*
- * roomin:
- *	Find what room some coordinates are in. NULL means they aren't
- *	in any room.
- */
+    roomin(coord *cp)
+
+        Find what room some coordinates are in.
+        NULL means they aren't in any room.
+*/
 
 struct room *
-roomin(cp)
-register coord *cp;
+roomin(coord cp)
 {
-    register struct room *rp;
+    struct room *rp;
+    int i;
 
-    for (rp = rooms; rp < &rooms[MAXROOMS]; rp++)
-	if (cp->x <= rp->r_pos.x + (rp->r_max.x - 1) 
-		&& rp->r_pos.x <= cp->x 
-		&& cp->y <= rp->r_pos.y + (rp->r_max.y - 1) 
-		&& rp->r_pos.y <= cp->y)
-	    return rp;
-    return NULL;
+    for (i = 0; i < MAXROOMS; i++)
+    {
+        rp = &rooms[i];
+
+        if ((cp.x <= (rp->r_pos.x + (rp->r_max.x - 1))) &&
+            (cp.y <= (rp->r_pos.y + (rp->r_max.y - 1))) &&
+            (cp.x >= rp->r_pos.x)                       &&
+            (cp.y >= rp->r_pos.y))
+        {
+            return(rp);
+        }
+    }
+
+    return(NULL);
 }
 
 /*
- * find_mons:
- *	Find the monster from his corrdinates
+ * find_mons: Find the monster from his corrdinates
  */
 
-struct linked_list *
-find_mons(y, x)
-register int y;
-int x;
+struct linked_list  *
+find_mons(int y, int x)
 {
-    register struct linked_list *item;
+    struct linked_list  *item;
 
-    for (item = mlist; item != NULL; item = next(item)) {
-	register struct thing *th = THINGPTR(item);
+    for (item = mlist; item != NULL; item = next(item))
+    {
+        struct thing *th = THINGPTR(item);
 
-	if (th->t_pos.y == y && th->t_pos.x == x)
-	    return item;
+        if (th->t_pos.y == y && th->t_pos.x == x)
+            return item;
     }
     return NULL;
 }
 
 /*
- * Find an unfriendly monster around us to hit 
+ * Find an unfriendly monster around us to hit
  */
-struct linked_list *
-f_mons_a(y, x, hit_bad)
-int y, x;
-bool hit_bad;
+
+struct linked_list  *
+f_mons_a(int y, int x, int hit_bad)
 {
-    register int row, col;
-    register struct linked_list *item;
-    register struct thing *tp;
+    int row, col;
+    struct linked_list  *item;
+    struct thing    *tp;
 
     for (row = x - 1; row <= x + 1; row++)
-	for (col = y - 1; col <= y + 1; col++)
-	    if (row == x && col == y)
-		continue;
-	    else if (col > 0 && row > 0 && isalpha(mvwinch(mw, col, row)) &&
-		     ((item = find_mons(col, row)) != NULL)) {
-	        tp = THINGPTR(item);
-	        if ((good_monster(*tp) && !hit_bad) ||
-		    (!good_monster(*tp) && hit_bad))
-		    return(item);
-	    }
-    return(NULL);
+        for (col = y - 1; col <= y + 1; col++)
+            if (row == x && col == y)
+                continue;
+            else if (col > 0 && row > 0 &&
+                isalpha(mvwinch(mw, col, row)) &&
+                 ((item = find_mons(col, row)) != NULL))
+            {
+                tp = THINGPTR(item);
+                if ((good_monster(*tp) && !hit_bad) ||
+                    (!good_monster(*tp) && hit_bad))
+                    return (item);
+            }
+
+    return (NULL);
 }
 
 
 /*
- * diag_ok:
- *	Check to see if the move is legal if it is diagonal
- */
+    diag_ok()
+        Check to see if the move is legal if it is diagonal
+*/
 
-diag_ok(sp, ep, flgptr)
-register coord *sp, *ep;
-struct thing *flgptr;
+int
+diag_ok(coord *sp, coord *ep, struct thing *flgptr)
 {
     if (ep->x == sp->x || ep->y == sp->y)
-	return TRUE;
+        return TRUE;
+
     return (step_ok(ep->y, sp->x, MONSTOK, flgptr) &&
-	    step_ok(sp->y, ep->x, MONSTOK, flgptr));
+        step_ok(sp->y, ep->x, MONSTOK, flgptr));
 }
 
 /*
- * cansee:
- *	returns true if the hero can see a certain coordinate.
- */
+    cansee()
+        returns true if the hero can see a certain coordinate.
+*/
 
-cansee(y, x)
-register int y, x;
+int
+cansee(int y, int x)
 {
-    register struct room *rer;
-    coord tp;
+    struct room *rer;
+    coord   tp;
 
     if (on(player, ISBLIND))
-	return FALSE;
+        return FALSE;
+
     tp.y = y;
     tp.x = x;
-    rer = roomin(&tp);
+    rer = roomin(tp);
+
     /*
-     * We can only see if the hero in the same room as
-     * the coordinate and the room is lit or if it is close.
+     * We can only see if the hero in the same room as the coordinate and
+     * the room is lit or if it is close.
      */
-    return ((rer != NULL && 
-	     rer == roomin(&hero) &&
-   	     (!(rer->r_flags&ISDARK) || (rer->r_flags & HASFIRE)) &&
-	     (levtype != MAZELEV ||	/* Maze level needs direct line */
-	      maze_view(tp.y, tp.x))) ||
-	    DISTANCE(y, x, hero.y, hero.x) < see_dist);
+
+    return ((rer != NULL &&
+         rer == roomin(hero) &&
+         (!(rer->r_flags & ISDARK) || (rer->r_flags & HASFIRE)) &&
+         (levtype != MAZELEV || /* Maze level needs direct line */
+          maze_view(tp.y, tp.x))) ||
+        DISTANCE(tp,hero) < see_dist);
 }
 
-coord *
-find_shoot(tp)
-struct thing *tp;
+coord   *
+find_shoot(struct thing *tp, coord *dir)
 {
-struct room 
-    *rtp;
-int 
-    ulx,uly,xmx,ymx,xmon,ymon,tpx,tpy,row,col;
-static coord shoot_dir;
-struct linked_list *mon;
-struct thing *ick;
+    struct room *rtp;
+    int ulx, uly, xmx, ymx, xmon, ymon, tpx, tpy, row, col;
+    struct linked_list  *mon;
+    struct thing    *ick;
 
-    rtp = roomin(&tp->t_pos);		/* Find room of chaser */
+    rtp = roomin(tp->t_pos);   /* Find room of chaser */
+
     if (rtp == NULL)
-	return NULL;
+        return NULL;
+
     ulx = rtp->r_pos.x;
     uly = rtp->r_pos.y;
     xmx = rtp->r_max.x;
@@ -822,39 +927,49 @@ struct thing *ick;
     tpx = tp->t_pos.x;
     tpy = tp->t_pos.y;
 
-    for (col = ulx; col < (ulx+xmx); col++)
-	for (row = uly; row < (uly+ymx); row++) { 
-	    if (row > 0 && col > 0 && isalpha(mvwinch(mw, row, col))) {
-		if ((mon = find_mons(row, col))) {
-		    ick = THINGPTR(mon);
-        	    xmon = ick->t_pos.x;
-        	    ymon = ick->t_pos.y;
-		    if (!(good_monster(*ick))) {
-        		if (straight_shot(tpy, tpx, ymon, xmon, &shoot_dir)) 
-			    return(&shoot_dir);
-		    }
-		}
-	    }
-	}
+    for (col = ulx; col < (ulx + xmx); col++)
+        for (row = uly; row < (uly + ymx); row++)
+        {
+            if (row > 0 && col > 0 && isalpha(mvwinch(mw, row, col)))
+            {
+                if ((mon = find_mons(row, col)))
+                {
+                    ick = THINGPTR(mon);
+                    xmon = ick->t_pos.x;
+                    ymon = ick->t_pos.y;
+
+                    if (!(good_monster(*ick)))
+                    {
+                        if (straight_shot(tpy, tpx, ymon, xmon, dir))
+                            return(dir);
+                    }
+                }
+            }
+        }
+
     return(NULL);
 }
 
-/* Can_shoot determines if the monster (er) has a direct line of shot 
- * at the player (ee).  If so, it returns the direction in which to shoot.
- */
+/*
+    can_shoot()
+        determines if the monster (er) has a direct line of shot at the
+        player (ee).  If so, it returns the direction in which to shoot.
+*/
 
 coord *
-can_shoot(er, ee)
-register coord *er, *ee;
+can_shoot(coord *er, coord *ee, coord *dir)
 {
-    static coord shoot_dir;
-    register int ery, erx, eey, eex, dy, dx;
+    int ery, erx, eey, eex;
 
     /* Make sure we are chasing the player */
-    if (!ce((*ee), hero)) return(NULL);
+
+    if (!ce((*ee), hero))
+        return(NULL);
 
     /* They must be in the same room */
-    if (roomin(er) != roomin(&hero)) return(NULL);
+
+    if (roomin(*er) != roomin(hero))
+        return(NULL);
 
     ery = er->y;
     erx = er->x;
@@ -862,236 +977,321 @@ register coord *er, *ee;
     eex = ee->x;
 
     /* Will shoot unless next to player, then 80% prob will fight */
-    if ((DISTANCE(ery, erx, eey, eex) < 4) && (rnd(100) < 80)) return(NULL);
+
+    if ((DISTANCE(*er,*ee) < 4) && (rnd(100) < 80))
+        return(NULL);
 
     /* Do we have a straight shot? */
-    if (!straight_shot(ery, erx, eey, eex, &shoot_dir)) return(NULL);
-    else return(&shoot_dir);
+
+    if (!straight_shot(ery, erx, eey, eex, dir))
+        return(NULL);
+    else
+        return(dir);
 }
 
 /*
- * straight_shot:
- *	See if there is a straight line of sight between the two
- *	given coordinates.  If shooting is not NULL, it is a pointer
- *	to a structure which should be filled with the direction
- *	to shoot (if there is a line of sight).  If shooting, monsters
- *	get in the way.  Otherwise, they do not.
- */
+    straight_shot()
+        See if there is a straight line of sight between the two
+        given coordinates.  If shooting is not NULL, it is a pointer to a
+        structure which should be filled with the direction to shoot (if
+        there is a line of sight).  If shooting, monsters get in the way.
+        Otherwise, they do not.
+*/
 
-bool
-straight_shot(ery, erx, eey, eex, shooting)
-register int ery, erx, eey, eex;
-register coord *shooting;
+int
+straight_shot(int ery, int erx, int eey, int eex, coord *dir)
 {
-    register int dy, dx;	/* Deltas */
-    char ch;
+    int dy, dx; /* Deltas */
+    int ch;
 
     /* Does the monster have a straight shot at player */
+
     if ((ery != eey) && (erx != eex) &&
-	(abs(ery - eey) != abs(erx - eex))) return(FALSE);
+        (abs(ery - eey) != abs(erx - eex)))
+        return (FALSE);
 
     /* Get the direction to shoot */
-    if (eey > ery) dy = 1;
-    else if (eey == ery) dy = 0;
-    else dy = -1;
 
-    if (eex > erx) dx = 1;
-    else if (eex == erx) dx = 0;
-    else dx = -1;
+    if (eey > ery)
+        dy = 1;
+    else if (eey == ery)
+        dy = 0;
+    else
+        dy = -1;
+
+    if (eex > erx)
+        dx = 1;
+    else if (eex == erx)
+        dx = 0;
+    else
+        dx = -1;
 
     /* Make sure we have free area all the way to the player */
+
     ery += dy;
     erx += dx;
-    while ((ery != eey) || (erx != eex)) {
-	switch (ch = winat(ery, erx)) {
-	    case '|':
-	    case '-':
-	    case WALL:
-	    case DOOR:
-	    case SECRETDOOR:
-		return(FALSE);
-	    default:
-		if (shooting && isalpha(ch)) return(FALSE);
-	}
-	ery += dy;
-	erx += dx;
+
+    while ((ery != eey) || (erx != eex))
+    {
+        switch(ch = winat(ery, erx))
+        {
+            case '|':
+            case '-':
+            case WALL:
+            case DOOR:
+            case SECRETDOOR:
+                return(FALSE);
+            default:
+                if (dir && isalpha(ch))
+                    return(FALSE);
+        }
+
+        ery += dy;
+        erx += dx;
     }
 
-    if (shooting) {	/* If we are shooting -- put in the directions */
-	shooting->y = dy;
-	shooting->x = dx;
+    if (dir)
+    {     /* If we are shooting -- put in the directions */
+        dir->y = dy;
+        dir->x = dx;
     }
+
     return(TRUE);
 }
 
 /*
- * get_hurl:
- *	returns the weapon that the monster will "throw" if it has one
- */
+    get_hurl
+        returns the weapon that the monster will "throw" if it has one
+*/
 
-struct linked_list *
-get_hurl(tp)
-register struct thing *tp;
+struct linked_list  *
+get_hurl(struct thing *tp)
 {
-    static struct linked_list *arrow, *bolt, *rock, *silverarrow, *fbbolt;
-    static struct linked_list *bullet, *firearrow, *dart, *dagger, *shuriken;
-    static struct linked_list *oil, *grenade;
-    register struct linked_list *pitem;
-    bool bow=FALSE, crossbow=FALSE, sling=FALSE, footbow=FALSE;
+    struct linked_list  *arrow,  *bolt,      *rock, *silverarrow, *fbbolt;
+    struct linked_list  *bullet, *firearrow, *dart, *dagger,      *shuriken;
+    struct linked_list  *oil,    *grenade;
+
+    struct linked_list  *pitem;
+    int bow = FALSE, crossbow = FALSE, sling = FALSE, footbow = FALSE;
 
     /* Don't point to anything to begin with */
-    arrow = bolt = rock = silverarrow = fbbolt = NULL;	
-    bullet = firearrow = dart = dagger = shuriken = NULL;	
-    oil = grenade = NULL;	
 
-    for (pitem = tp->t_pack; pitem != NULL ; pitem = next(pitem))
-	if ((OBJPTR(pitem))->o_type == WEAPON)
-	    switch ((OBJPTR(pitem))->o_which) {
-		when BOW:	bow = TRUE;
-		when CROSSBOW:	crossbow = TRUE;
-		when SLING:	sling = TRUE;
-		when FOOTBOW:	footbow = TRUE;
-		when ROCK:	rock = pitem;
-		when ARROW:	arrow = pitem;
-		when SILVERARROW: silverarrow = pitem;
-		when BOLT:	bolt = pitem;
-		when FBBOLT:	fbbolt = pitem;
-		when BULLET:	bullet = pitem;
-		when FLAMEARROW:firearrow = pitem;
-		when DART:	dart = pitem;
-		when DAGGER:	dagger = pitem;
-		when SHIRIKEN:	shuriken = pitem;
-		when MOLOTOV:	oil = pitem;
-		when GRENADE:	grenade = pitem;
-	    }
-    
-    if (grenade) return(grenade);
-    if (bow && silverarrow) return(silverarrow);
-    if (crossbow && bolt) return(bolt);
-    if (bow && firearrow) return(firearrow);
-    if (oil) return(oil);
-    if (footbow && fbbolt) return(fbbolt);
-    if (bow && arrow) return(arrow);
-    if (sling && bullet) return(bullet);
-    if (sling && rock) return(rock);
-    if (shuriken) return(shuriken);
-    if (dagger) return(dagger);
-    if (silverarrow) return(silverarrow);
-    if (firearrow) return(firearrow);
-    if (fbbolt) return(fbbolt);
-    if (bolt) return(bolt);
-    if (bullet) return(bullet);
-    if (dart) return(dart);
-    if (rock) return(rock);
+    arrow = bolt = rock = silverarrow = fbbolt = NULL;
+    bullet = firearrow = dart = dagger = shuriken = NULL;
+    oil = grenade = NULL;
+
+    for (pitem = tp->t_pack; pitem != NULL; pitem = next(pitem))
+        if ((OBJPTR(pitem))->o_type == WEAPON)
+            switch ((OBJPTR(pitem))->o_which)
+            {
+                case    BOW:bow = TRUE; break;
+                case    CROSSBOW:crossbow = TRUE; break;
+                case    SLING:sling = TRUE; break;
+                case    FOOTBOW:footbow = TRUE; break;
+                case    ROCK:rock = pitem; break;
+                case    ARROW:arrow = pitem; break;
+                case    SILVERARROW:silverarrow = pitem; break;
+                case    BOLT:bolt = pitem; break;
+                case    FBBOLT:fbbolt = pitem; break;
+                case    BULLET:bullet = pitem; break;
+                case    FLAMEARROW:firearrow = pitem; break;
+                case    DART:dart = pitem; break;
+                case    DAGGER:dagger = pitem; break;
+                case    SHIRIKEN:shuriken = pitem; break;
+                case    MOLOTOV:oil = pitem; break;
+                case    GRENADE:grenade = pitem; break;
+            }
+
+    if (grenade)
+        return(grenade);
+
+    if (bow && silverarrow)
+        return(silverarrow);
+
+    if (crossbow && bolt)
+        return(bolt);
+
+    if (bow && firearrow)
+        return(firearrow);
+
+    if (oil)
+        return(oil);
+
+    if (footbow && fbbolt)
+        return(fbbolt);
+
+    if (bow && arrow)
+        return(arrow);
+
+    if (sling && bullet)
+        return(bullet);
+
+    if (sling && rock)
+        return(rock);
+
+    if (shuriken)
+        return(shuriken);
+
+    if (dagger)
+        return(dagger);
+
+    if (silverarrow)
+        return(silverarrow);
+
+    if (firearrow)
+        return(firearrow);
+
+    if (fbbolt)
+        return(fbbolt);
+
+    if (bolt)
+        return(bolt);
+
+    if (bullet)
+        return(bullet);
+
+    if (dart)
+        return(dart);
+
+    if (rock)
+        return(rock);
+
     return(NULL);
 }
 
 /*
- * pick_weap:
- * returns the biggest weapon that the monster will wield if it has a
- * non-launching or non-missile weapon
- * returns NULL if no weapon, or bare hands is better
- */
+    pick_weap()
+        returns the biggest weapon that the monster will wield if it
+        has a non-launching or non-missile weapon returns NULL if no weapon, or
+        bare hands is better
+*/
 
 struct object *
-pick_weap(tp)
-register struct thing *tp;
+pick_weap(struct thing *tp)
 {
     int weap_dam = maxdamage(tp->t_stats.s_dmg);
-    struct object *ret_obj = NULL;
-    register struct linked_list *pitem;
-    register struct object *obj;
+    struct object   *ret_obj = NULL;
+    struct linked_list  *pitem;
 
-    if (on(*tp, CANWIELD)) {
-	for (pitem = tp->t_pack; pitem != NULL; pitem = next(pitem)) {
-	    obj = OBJPTR(pitem);
-	    if (obj->o_type != WEAPON && !(obj->o_flags & (ISLAUNCHER | ISMISL)) &&
-		maxdamage(obj->o_damage) > weap_dam) {
-		weap_dam = maxdamage(obj->o_damage);
-		ret_obj = obj;
-	    }
-	}
+    if (on(*tp, CANWIELD))
+    {
+        for (pitem = tp->t_pack; pitem != NULL; pitem = next(pitem))
+        {
+            struct object   *obj = OBJPTR(pitem);
+
+            if (obj->o_type != WEAPON && !(obj->o_flags&(ISLAUNCHER|ISMISL)) &&
+                maxdamage(obj->o_damage) > weap_dam)
+            {
+                weap_dam = maxdamage(obj->o_damage);
+                ret_obj = obj;
+            }
+        }
     }
-    return(ret_obj);
+
+    return (ret_obj);
 }
 
 /*
- * Canblink checks if the monster can teleport (blink).  If so, it will
- * try to blink the monster next to the player.
- */
+    canblink()
+        checks if the monster can teleport (blink).  If so, it will try
+        to blink the monster next to the player.
+*/
 
-bool
-can_blink(tp)
-register struct thing *tp;
+int
+can_blink(struct thing *tp)
 {
-    register short y, x, index=9;
-    struct linked_list *item;
-    coord tryp;	/* To hold the coordinates for use in diag_ok */
-    bool spots[9], found_one=FALSE;
+    short   y, x, index = 9;
+    coord   tryp;       /* To hold the coordinates for use in diag_ok */
+    int    spots[9], found_one = FALSE;
 
-    /* First, can the monster even blink?  And if so, there is only a 50%
+    /*
+     * First, can the monster even blink?  And if so, there is only a 50%
      * chance that it will do so.  And it won't blink if it is running.
      */
-    if (off(*tp, CANBLINK) || (on(*tp, ISHELD)) ||
-	on(*tp, ISFLEE) ||
-	(on(*tp, ISSLOW) && off(*tp, ISHASTE) && !(tp->t_turn)) ||
-	(rnd(12) < 6)) return(FALSE);
 
+    if (off(*tp, CANBLINK) || (on(*tp, ISHELD)) ||
+        on(*tp, ISFLEE) ||
+        (on(*tp, ISSLOW) && off(*tp, ISHASTE) && !(tp->t_turn)) ||
+        (rnd(12) < 6))
+        return (FALSE);
 
     /* Initialize the spots as illegal */
-    do {
-	spots[--index] = FALSE;
-    } while (index > 0);
+
+    do
+    {
+        spots[--index] = FALSE;
+    }
+    while (index > 0);
 
     /* Find a suitable spot next to the player */
-    for (y=hero.y-1; y<hero.y+2; y++)
-	for (x=hero.x-1; x<hero.x+2; x++, index++) {
-	    /* Make sure x coordinate is in range and that we are
-	     * not at the player's position
-	     */
-	    if (x<0 || x >= COLS || index == 4) continue;
 
-	    /* Is it OK to move there? */
-	    if (!step_ok(y, x, NOMONST, tp)) spots[index] = FALSE;
-	    else {
-		/* OK, we can go here.  But don't go there if
-		 * monster can't get at player from there
-		 */
-		tryp.y = y;
-		tryp.x = x;
-		if (diag_ok(&tryp, &hero, tp)) {
-		    spots[index] = TRUE;
-		    found_one = TRUE;
-		}
-	    }
-	}
+    for (y = hero.y - 1; y < hero.y + 2; y++)
+        for (x = hero.x - 1; x < hero.x + 2; x++, index++)
+        {
+            /*
+             * Make sure x coordinate is in range and that we are
+             * not at the player's position
+             */
+
+            if (x < 0 || x >= COLS || index == 4)
+                continue;
+
+            /* Is it OK to move there? */
+
+            if (!step_ok(y, x, NOMONST, tp))
+                spots[index] = FALSE;
+           else
+           {
+
+                /*
+                 * OK, we can go here.  But don't go there if
+                 * monster can't get at player from there
+                 */
+
+                tryp.y = y;
+                tryp.x = x;
+                if (diag_ok(&tryp, &hero, tp))
+                {
+                    spots[index] = TRUE;
+                    found_one = TRUE;
+                }
+            }
+        }
 
     /* If we found one, go to it */
-    if (found_one) {
-	/* Find a legal spot */
-	while (spots[index=rnd(9)] == FALSE) continue;
 
-	/* Get the coordinates */
-	y = hero.y + (index/3) - 1;
-	x = hero.x + (index % 3) - 1;
+    if (found_one)
+    {
+        /* Find a legal spot */
 
-	/* Move the monster from the old space */
-	mvwaddch(cw, tp->t_pos.y, tp->t_pos.x, tp->t_oldch);
+        while (spots[index = rnd(9)] == FALSE)
+            continue;
 
-	/* Move it to the new space */
-	tp->t_oldch = mvwinch(cw, y, x);
+        /* Get the coordinates */
 
-	if (cansee(y, x) &&
-	    off(*tp, ISINWALL) &&
-	    ((off(*tp, ISINVIS) && 
-	      (off(*tp, ISSHADOW) || rnd(100) < 10)) || on(player, CANSEE)) &&
-	    off(*tp, CANSURPRISE))
-	    mvwaddch(cw, y, x, tp->t_type);
-	mvwaddch(mw, tp->t_pos.y, tp->t_pos.x, ' '); /* Clear old position */
-	mvwaddch(mw, y, x, tp->t_type);
-	tp->t_pos.y = y;
-	tp->t_pos.x = x;
+        y = hero.y + (index / 3) - 1;
+        x = hero.x + (index % 3) - 1;
+
+        /* Move the monster from the old space */
+
+        mvwaddch(cw, tp->t_pos.y, tp->t_pos.x, tp->t_oldch);
+
+        /* Move it to the new space */
+
+        tp->t_oldch = mvwinch(cw, y, x);
+
+        if (cansee(y, x) &&
+            off(*tp, ISINWALL) &&
+            ((off(*tp, ISINVIS) &&
+              (off(*tp, ISSHADOW) || rnd(100) < 10)) || on(player, CANSEE)) &&
+            off(*tp, CANSURPRISE))
+            mvwaddch(cw, y, x, tp->t_type);
+
+        mvwaddch(mw, tp->t_pos.y,tp->t_pos.x,(char)' '); /*Clear old position */
+        mvwaddch(mw, y, x, tp->t_type);
+        tp->t_pos.y = y;
+        tp->t_pos.x = x;
     }
 
-    return(found_one);
+    return (found_one);
 }
