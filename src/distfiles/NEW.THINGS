@@ -1688,4 +1688,9 @@
 3)	get_string() is the line editor for every prompt
 4)	status line shows how fast you eat
 
+1.05, Jun 12, 93
+1)	allocation returns void *.  new_list() makes list links
+2)	spell names written into the caller's buffer
+3)	the Sceptre of Might blesses unblessed spells as it should
+
 -------	End of File ------
