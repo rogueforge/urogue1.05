@@ -101,7 +101,7 @@ main(int argc, char *argv[])
 
     /* put a copy of fruit in the right place */
 
-    strcpy(fd_data[1].mi_name, fruit);
+    fd_data[1].mi_name = strdup(fruit); /* NOT ANSI C, fix later */
     /* strcpy(fd_data[1].mi_name, fruit); Can't copy into static data area? */
 
     /* print scores */

@@ -904,8 +904,8 @@ init_colors(void)
             str = rainbow[rnd(NCOLORS)];
         while( !isupper((int)*str) );
 
-        *str = tolower((int)*str);
-        p_colors[i] = str;
+        p_colors[i]    = strdup(str);
+        p_colors[i][0] = tolower((int)p_colors[i][0]);
 
         know_items[TYP_POTION][i]  = FALSE;
         guess_items[TYP_POTION][i] = NULL;
@@ -981,8 +981,8 @@ init_stones(void)
             str = stones[rnd(NSTONES)];
         while(!isupper((int)*str));
 
-        *str = tolower((int)*str);
-        r_stones[i] = str;
+        r_stones[i]    = strdup(str);
+        r_stones[i][0] = tolower((int) r_stones[i][0] );
 
         know_items[TYP_RING][i]  = FALSE;
         guess_items[TYP_RING][i] = NULL;
@@ -1026,8 +1026,8 @@ init_materials(void)
         }
         while(!isupper((int)*str));
 
-        *str = tolower((int)*str);
-        ws_made[i] = str;
+        ws_made[i] = strdup(str);
+        ws_made[i][0] = tolower( (int) ws_made[i][0] );
 
         know_items[TYP_STICK][i]  = FALSE;
         guess_items[TYP_STICK][i] = 0;
