@@ -1,473 +1,639 @@
 /*
- * Last Modified: Jan 5, 1991
+ * Last Modified: Aug 12, 1993
  */
+
 #include "rogue.h"
 
 /*
- * new_level:
- *	Dig and draw a new level
- *
- */
+    new_level()
+        Dig and draw a new level
+*/
 
-new_level(ltype)
-LEVTYPE	ltype;		/* designates type of level to create */
+void
+new_level(LEVTYPE ltype)
 {
-    register int rm, i, cnt;
-    register struct linked_list *item, *nitem;
-    register struct thing *tp;
-    struct linked_list *fpack;
-    bool going_down = TRUE;
-    coord stairs;
+    int rm, i, cnt;
+    struct linked_list  *item, *nitem;
+    struct thing    *tp;
+    struct linked_list  *fpack;
+    int     going_down = TRUE;
+    coord   stairs;
 
     /* Start player off right */
+
     turn_off(player, ISHELD);
     turn_off(player, ISFLEE);
-    extinguish(suffocate);
+    extinguish_fuse(suffocate);
     hold_count = 0;
     trap_tries = 0;
     no_food++;
 
     if (level >= max_level)
-	max_level = level;
+        max_level = level;
     else
-	going_down = FALSE;
-    /*
-     * Free up the monsters on the last level
-     */
-    if (fam_ptr != NULL) { 	/* save what familiar is carrying */
-	fpack = (THINGPTR(fam_ptr))->t_pack;
-	(THINGPTR(fam_ptr))->t_pack = NULL;
-	fam_ptr = NULL;		/* just in case */
-    }
-    for (i = 1; i <= mons_summoned; i++)
-	extinguish(unsummon);
-    mons_summoned = 0;
-    for (item = mlist; item != NULL; item = nitem) {
-	tp = THINGPTR(item);
-	nitem = next(item);
-	if (on(*tp, ISUNIQUE))	/* Put alive UNIQUE on next level */
-	    monsters[tp->t_index].m_normal = TRUE;
-	killed(NULL, item, NOMESSAGE, NOPOINTS);
+        going_down = FALSE;
+
+    /* Free up the monsters on the last level */
+
+    if (fam_ptr != NULL)    /* save what familiar is carrying */
+    {
+        fpack = (THINGPTR(fam_ptr))->t_pack;
+        (THINGPTR(fam_ptr))->t_pack = NULL;
+        fam_ptr = NULL; /* just in case */
     }
 
-    free_list(lvl_obj);			/* Free up previous objects (if any) */
+    for (i = 1; i <= mons_summoned; i++)
+        extinguish_fuse(unsummon);
+
+    mons_summoned = 0;
+
+    for (item = mlist; item != NULL; item = nitem)
+    {
+        tp = THINGPTR(item);
+        nitem = next(item);
+
+        if (on(*tp, ISUNIQUE))  /* Put alive UNIQUE on next level */
+            monsters[tp->t_index].m_normal = TRUE;
+
+        killed(NULL, item, NOMESSAGE, NOPOINTS);
+    }
+
+    free_list(lvl_obj); /* Free up previous objects (if any) */
 
     wclear(cw);
     wclear(mw);
     clear();
+    refresh();
     levtype = ltype;
-    switch(ltype) {
-    when THRONE:
-	do_throne();			/* do monster throne stuff */
-    when MAZELEV:
-	do_maze();
-    when POSTLEV:
-    default:
-	if (going_down && (level == 0 || (level % 15) == 0)) {
-	    do_post();
-	    level++;
-	    levtype = ltype = NORMLEV;
-	}
-	do_rooms();			/* Draw rooms */
-	do_passages();			/* Draw passages */
+
+    switch (ltype)
+    {
+        case THRONE:
+            do_throne();    /* do monster throne stuff */
+            break;
+
+        case MAZELEV:
+            do_maze();
+            break;
+
+        case POSTLEV:
+        default:
+            if (going_down && (level == 0 || (level % 15) == 0))
+            {
+                do_post();
+                level++;
+                levtype = ltype = NORMLEV;
+            }
+            do_rooms(); /* Draw rooms */
+
+            do_passages();  /* Draw passages */
     }
 
-    /*
-     * Place the staircase down.
-     */
-    cnt = 0;
-    do {
-        rm = rnd_room();
-	rnd_pos(&rooms[rm], &stairs);
-    } while (!(mvinch(stairs.y, stairs.x) == FLOOR || cnt++ > 5000));
-    addch(STAIRS);
+    /* Place the staircase down. */
 
-    put_things(ltype);				/* Place objects (if any) */
+    cnt = 0;
+
+    do
+    {
+        rm = rnd_room();
+        rnd_pos(&rooms[rm], &stairs);
+    }
+    while (!(mvinch(stairs.y, stairs.x) == FLOOR || cnt++ > 5000));
+
+    addch((char)STAIRS);
+
+    put_things(ltype);  /* Place objects (if any) */
 
     if (has_artifact && level == 1)
-	create_lucifer(&stairs);
+        create_lucifer(&stairs);
 
-    /*
-     * Place the traps
-     */
-    ntraps = 0;	/* No traps yet */
-    if (levtype == NORMLEV) {
-	if (rnd(10) < level) {
-	    register char ch;
+    /* Place the traps */
 
-	    i = ntraps = min(MAXTRAPS, rnd(level / 4) + 1);
-	    /*
-	     * maybe a lair
-	     */
-	    if (level > 50 && ltype == NORMLEV && rnd(wizard ? 3 : 10) == 0) {
-		cnt = 0;
-		do {
-		    rm = rnd_room();
-		    if (rooms[rm].r_flags & ISTREAS)
-			continue;
-		    rnd_pos(&rooms[rm], &stairs);
-	        } until (mvinch(stairs.y, stairs.x) == FLOOR || cnt++ > 5000);
-	        addch(LAIR);
-		i--;
-		traps[i].tr_flags = 0;
-		traps[i].tr_type = LAIR;
-		traps[i].tr_show = FLOOR;
-		traps[i].tr_pos = stairs;
-	    }
-	    while (i--) {
-		cnt = 0;
-		do {
-		    rm = rnd_room();
-		    if (rooms[rm].r_flags & ISTREAS)
-			continue;
-		    rnd_pos(&rooms[rm], &stairs);
-		} until (mvinch(stairs.y, stairs.x) == FLOOR || cnt++ > 5000);
+    ntraps = 0;     /* No traps yet */
 
-		traps[i].tr_flags = 0;
-		switch(rnd(11)) {
-		    when 0: ch = TRAPDOOR;
-		    when 1: ch = BEARTRAP;
-		    when 2: ch = SLEEPTRAP;
-		    when 3: ch = ARROWTRAP;
-		    when 4: ch = TELTRAP;
-		    when 5: ch = DARTTRAP;
-		    when 6: ch = POOL;
-			    if (rnd(10))
-				traps[i].tr_flags = ISFOUND;
-		    when 7: ch = MAZETRAP;
-		    when 8: ch = FIRETRAP;
-		    when 9: ch = POISONTRAP;
-		    when 10: ch = RUSTTRAP;
-		}
-		addch(ch);
-		traps[i].tr_type = ch;
-		traps[i].tr_show = FLOOR;
-		traps[i].tr_pos = stairs;
-	    }
-	}
+    if (levtype == NORMLEV)
+    {
+        if (rnd(10) < level)
+        {
+            char    ch;
+
+            i = ntraps = min(MAXTRAPS, rnd(level / 4) + 1);
+
+            /* maybe a lair */
+
+            if (level > 50 && ltype == NORMLEV && rnd(wizard ? 3 : 10) == 0)
+            {
+                cnt = 0;
+
+                do
+                {
+                    rm = rnd_room();
+
+                    if (rooms[rm].r_flags & ISTREAS)
+                        continue;
+
+                    rnd_pos(&rooms[rm], &stairs);
+                }
+                while (!(mvinch(stairs.y, stairs.x) == FLOOR || cnt++ > 5000));
+
+                addch((char)LAIR);
+                i--;
+                traps[i].tr_flags = 0;
+                traps[i].tr_type = LAIR;
+                traps[i].tr_show = FLOOR;
+                traps[i].tr_pos = stairs;
+            }
+
+            while (i--)
+            {
+                cnt = 0;
+
+                do
+                {
+                    rm = rnd_room();
+
+                    if (rooms[rm].r_flags & ISTREAS)
+                        continue;
+
+                    rnd_pos(&rooms[rm], &stairs);
+                }
+                while (!(mvinch(stairs.y, stairs.x) == FLOOR || cnt++ > 5000));
+
+                traps[i].tr_flags = 0;
+
+                switch (rnd(11))
+                {
+                    case 0:
+                        ch = TRAPDOOR;
+                        break;
+
+                    case 1:
+                        ch = BEARTRAP;
+                        break;
+
+                    case 2:
+                        ch = SLEEPTRAP;
+                        break;
+
+                    case 3:
+                        ch = ARROWTRAP;
+                        break;
+
+                    case 4:
+                        ch = TELTRAP;
+                        break;
+
+                    case 5:
+                        ch = DARTTRAP;
+                        break;
+
+                    case 6:
+                        ch = POOL;
+
+                        if (rnd(10))
+                            traps[i].tr_flags = ISFOUND;
+
+                        break;
+
+                    case 7:
+                        ch = MAZETRAP;
+                        break;
+
+                    case 8:
+                        ch = FIRETRAP;
+                        break;
+
+                    case 9:
+                        ch = POISONTRAP;
+                        break;
+
+                    case 10:
+                        ch = RUSTTRAP;
+                        break;
+                }
+
+                addch(ch);
+                traps[i].tr_type = ch;
+                traps[i].tr_show = FLOOR;
+                traps[i].tr_pos = stairs;
+            }
+        }
     }
-    do {					/* Position hero */
-	rm = rnd_room();
-	if (levtype != THRONE && (rooms[rm].r_flags & ISTREAS))
-	    continue;
-	rnd_pos(&rooms[rm], &hero);
-    } until( winat(hero.y, hero.x) == FLOOR &&
-	     DISTANCE(hero.y, hero.x, stairs.y, stairs.x) > 16);
-    oldrp = &rooms[rm];		/* Set the current room */
-    player.t_oldpos = player.t_pos;	/* Set the current position */
 
-    if (levtype != POSTLEV && levtype != THRONE) {
-	if (on(player, BLESSMAP) && rnd(5) == 0) {
-	    read_scroll(&player, S_MAP, ISNORMAL);
-	    if (rnd(3) == 0)
-		turn_off(player, BLESSMAP);
-	}
-	if (player.t_ctype == C_THIEF || on(player, BLESSGOLD) && rnd(5) == 0) {
-	    read_scroll(&player, S_GFIND, ISNORMAL);
-	    if (rnd(3) == 0)
-		turn_off(player, BLESSGOLD);
-	}
-	if (player.t_ctype == C_RANGER || on(player, BLESSFOOD) && rnd(5) == 0) {
-	    read_scroll(&player, S_FOODDET, ISNORMAL);
-	    if (rnd(3) == 0)
-		turn_off(player, BLESSFOOD);
-	}
-	if (player.t_ctype == C_MAGICIAN || player.t_ctype == C_ILLUSION ||
-	    on(player, BLESSMAGIC) && rnd(5) == 0) {
-	    quaff(&player, P_TREASDET, ISNORMAL);
-	    if (rnd(3) == 0)
-		turn_off(player, BLESSMAGIC);
-	}
-	if (player.t_ctype == C_DRUID || on(player, BLESSMONS) && rnd(5) == 0) {
-	    quaff(&player, P_MONSTDET, ISNORMAL);
-	    if (rnd(3) == 0)
-		turn_off(player, BLESSMONS);
-	}
-	else if (player.t_ctype == C_CLERIC ||
-		 player.t_ctype == C_PALADIN || is_wearing(R_PIETY))
-	    undead_sense();
+    do              /* Position hero */
+    {
+        rm = rnd_room();
+
+        if (levtype != THRONE && (rooms[rm].r_flags & ISTREAS))
+            continue;
+
+        rnd_pos(&rooms[rm], &hero);
+    }
+    while(!(winat(hero.y, hero.x) == FLOOR &&
+           DISTANCE(hero, stairs) > 16));
+
+    oldrp = &rooms[rm]; /* Set the current room */
+    player.t_oldpos = player.t_pos; /* Set the current position */
+
+    if (levtype != POSTLEV && levtype != THRONE)
+    {
+        if (on(player, BLESSMAP) && rnd(5) == 0)
+        {
+            read_scroll(&player, S_MAP, ISNORMAL);
+
+            if (rnd(3) == 0)
+                turn_off(player, BLESSMAP);
+        }
+
+        if (player.t_ctype == C_THIEF || on(player, BLESSGOLD) && rnd(5) == 0)
+        {
+            read_scroll(&player, S_GFIND, ISNORMAL);
+
+            if (rnd(3) == 0)
+                turn_off(player, BLESSGOLD);
+        }
+
+        if (player.t_ctype == C_RANGER || on(player, BLESSFOOD) && rnd(5) == 0)
+        {
+            read_scroll(&player, S_FOODDET, ISNORMAL);
+
+            if (rnd(3) == 0)
+                turn_off(player, BLESSFOOD);
+        }
+
+        if (player.t_ctype == C_MAGICIAN || player.t_ctype == C_ILLUSION ||
+            on(player, BLESSMAGIC) && rnd(5) == 0)
+        {
+            quaff(&player, P_TREASDET, ISNORMAL);
+
+            if (rnd(3) == 0)
+                turn_off(player, BLESSMAGIC);
+        }
+
+        if (player.t_ctype == C_DRUID || on(player, BLESSMONS) && rnd(5) == 0)
+        {
+            quaff(&player, P_MONSTDET, ISNORMAL);
+
+            if (rnd(3) == 0)
+                turn_off(player, BLESSMONS);
+        }
+        else if (player.t_ctype == C_CLERIC ||
+            player.t_ctype == C_PALADIN || is_wearing(R_PIETY))
+            undead_sense();
     }
 
     if (is_wearing(R_AGGR))
-	aggravate();
+        aggravate();
 
-    if (is_wearing(R_ADORNMENT) || 
-		cur_armor != NULL && cur_armor->o_which == MITHRIL) {
-	register bool greed = FALSE;
-	for (item = mlist; item != NULL; item = next(item)) {
-	    tp = THINGPTR(item);
-	    if (on(*tp, ISGREED)) {
-		turn_on(*tp, ISRUN);
-		turn_on(*tp, ISMEAN);
-		tp->t_dest = &hero;
-		greed = TRUE;
-	    }
-	}
-	if (greed)
-	    msg("An uneasy feeling comes over you.");
+    if (is_wearing(R_ADORNMENT) ||
+        cur_armor != NULL && cur_armor->o_which == MITHRIL)
+    {
+        int greed = FALSE;
+
+        for (item = mlist; item != NULL; item = next(item))
+        {
+            tp = THINGPTR(item);
+
+            if (on(*tp, ISGREED))
+            {
+                turn_on(*tp, ISRUN);
+                turn_on(*tp, ISMEAN);
+                tp->t_ischasing = TRUE;
+                tp->t_chasee = &player;
+                greed = TRUE;
+            }
+        }
+
+        if (greed)
+            msg("An uneasy feeling comes over you.");
     }
 
-    /* Palantir shows all */
-    if (is_carrying(TR_PALANTIR)) {
-	msg("The Palantir reveals all!");
-	overlay(stdscr,cw);			/* Wizard mode 'f' command */
-	overlay(mw,cw);				/* followed by 'm' command */
+    if (is_carrying(TR_PALANTIR))   /* Palantir shows all */
+    {
+        msg("The Palantir reveals all!");
+
+        overlay(stdscr, cw);    /* Wizard mode 'f' command */
+        overlay(mw, cw);        /* followed by 'm' command */
     }
 
-    /* Phial lights your way */
-    if (is_carrying(TR_PHIAL)) {
-	if (!is_carrying(TR_PALANTIR))
-	    msg("The Phial banishes the darkness!");
-	for (i = 0; i < MAXROOMS; i++)
-	    rooms[i].r_flags &= ~ISDARK;
+    if (is_carrying(TR_PHIAL))  /* Phial lights your way */
+    {
+        if (!is_carrying(TR_PALANTIR))
+            msg("The Phial banishes the darkness!");
+
+        for (i = 0; i < MAXROOMS; i++)
+            rooms[i].r_flags &= ~ISDARK;
     }
 
-    /* Amulet describes the level */
-    if (is_carrying(TR_AMULET)) {
-	level_eval();
+    if (is_carrying(TR_AMULET)) /* Amulet describes the level */
+    {
+        level_eval();
     }
+
 
     wmove(cw, hero.y, hero.x);
     waddch(cw, PLAYER);
     light(&hero);
 
-    /*
-     * Summon familiar if player has one
-     */
-    if (on(player,HASFAMILIAR)) {
-        summon_monster((short) fam_type,FAMILIAR, MESSAGE);
-	if (fam_ptr != NULL) {	/* add old pack to new */
-	    tp = THINGPTR(fam_ptr);
-	    if (tp->t_pack == NULL)
-		tp->t_pack = fpack;
-	    else if (fpack != NULL) {
-		for (item = tp->t_pack; item->l_next != NULL; item = next(item))
-		    ;
-		item->l_next = fpack;
-		fpack->l_prev = item;
-	    }
-	}
-	else
-	    free_list(fpack);
+    /* Summon familiar if player has one */
+
+    if (on(player, HASFAMILIAR))
+    {
+        summon_monster((short) fam_type, FAMILIAR, MESSAGE);
+
+        if (fam_ptr != NULL)    /* add old pack to new */
+        {
+            tp = THINGPTR(fam_ptr);
+
+            if (tp->t_pack == NULL)
+                tp->t_pack = fpack;
+            else if (fpack != NULL)
+            {
+                for (item = tp->t_pack; item->l_next != NULL;item = next(item))
+                    ;
+
+                item->l_next = fpack;
+                msg("new_level: l_prev = %p",item);
+                fpack->l_prev = item;
+            }
+        }
+        else
+            free_list(fpack);
     }
 
     status(TRUE);
 }
 
 /*
- * put_things:
- *	put potions and scrolls on this level
- */
+    put_things()
+        put potions and scrolls on this level
+*/
 
-put_things(ltype)
-LEVTYPE	ltype;		/* designates type of level to create */
+void
+put_things(LEVTYPE ltype)
 {
-    register int i, rm, cnt;
-    register struct linked_list *item;
-    register struct object *cur;
-    bool got_unique = FALSE;
+    int i, rm, cnt;
+    struct linked_list  *item;
+    struct object   *cur;
+    int    got_unique = FALSE;
     int length, width, maxobjects;
-    coord tp;
+    coord   tp;
 
     /*
      * Once you have found an artifact, the only way to get new stuff is
      * go down into the dungeon.
      */
+
     if (has_artifact && level < max_level && ltype != THRONE)
-	return;
-
-    /* 
-     * There is a chance that there is a treasure room on this level 
-     * Increasing chance after level 15 
-     */
-    if (ltype != MAZELEV && rnd(80) < level - 15) {	
-	register  i, j;
-	register struct room *rp;
-
-	/* Count the number of free spaces */
-	i = 0;	/* 0 tries */
-	do {
-	    rp = &rooms[rnd_room()];
-	    width = rp->r_max.y - 2;
-	    length = rp->r_max.x - 2;
-	} until ((width*length <= MAXTREAS) || (i++ > MAXROOMS*4));
-
-	/* Mark the room as a treasure room */
-	rp->r_flags |= ISTREAS;
-
-	/* Make all the doors secret doors */
-	for (i = 0; i < rp->r_nexits; i++) {
-	    move(rp->r_exit[i].y, rp->r_exit[i].x);
-	    addch(SECRETDOOR);
-	}
-
-	/* Put in the monsters and treasures */
-	for (j=1; j<rp->r_max.y-1; j++)
-	    for (i=1; i<rp->r_max.x-1; i++) {
-		coord trp;
-
-		trp.y = rp->r_pos.y+j;
-		trp.x = rp->r_pos.x+i;
-
-		/* Monsters */
-		if ((rnd(100) < (MAXTREAS*100)/(width*length)) &&
-		    (mvwinch(mw, rp->r_pos.y+j, rp->r_pos.x+i) == ' ')) {
-		    register struct thing *tp;
-
-		    /* Make a monster */
-		    item = new_item(sizeof *tp);
-		    tp = THINGPTR(item);
-
-		    /* 
-		     * Put it there and aggravate it (unless it can escape) 
-		     * only put one UNIQUE per treasure room at most
-		     */
-		    if (got_unique)
-			new_monster(item,randmonster(NOWANDER, GRAB), &trp, NOMAXSTATS);
-		    else {
-			new_monster(item,randmonster(NOWANDER, NOGRAB), &trp, NOMAXSTATS);
-			if (on(*tp, ISUNIQUE))
-			    got_unique = TRUE;
-		    }
-		    turn_off(*tp, ISFRIENDLY);	/* no friendly monsters */
-		    turn_on(*tp, ISMEAN);
-		    if (off(*tp, CANINWALL)) {
-			tp->t_dest = &hero;
-			turn_on(*tp, ISRUN);
-		    }
-		}
-
-		/* Treasures */
-		if ((rnd(100) < (MAXTREAS*100)/(width*length)) &&
-		    (mvinch(rp->r_pos.y+j, rp->r_pos.x+i) == FLOOR)) {
-		    item = new_thing();
-		    cur = OBJPTR(item);
-		    cur->o_pos = trp;
-		    add_obj(item, trp.y, trp.x);
-		}
-	    }
-    }
+        return;
 
     /*
-     * Do MAXOBJ attempts to put things on a level, maybe
+     * There is a chance that there is a treasure room on this level
+     * Increasing chance after level 15
      */
-    maxobjects = ltype == THRONE ? rnd(3 * MAXOBJ) + 35 : MAXOBJ;
+
+    if (ltype != MAZELEV && rnd(80) < level - 15)
+    {
+        int n, j;
+        struct room *rp;
+
+        /* Count the number of free spaces */
+        n = 0;      /* 0 tries */
+
+        do
+        {
+            rp = &rooms[rnd_room()];
+            width = rp->r_max.y - 2;
+            length = rp->r_max.x - 2;
+        }
+        while(!((width * length <= MAXTREAS) || (n++ > MAXROOMS * 4)));
+
+        /* Mark the room as a treasure room */
+
+        rp->r_flags |= ISTREAS;
+
+        /* Make all the doors secret doors */
+
+        for (n = 0; n < rp->r_nexits; n++)
+        {
+            move(rp->r_exit[n].y, rp->r_exit[n].x);
+            addch((char)SECRETDOOR);
+        }
+
+        /* Put in the monsters and treasures */
+
+        for (j = 1; j < rp->r_max.y - 1; j++)
+            for (n = 1; n < rp->r_max.x - 1; n++)
+            {
+                coord   trp;
+
+                trp.y = rp->r_pos.y + j;
+                trp.x = rp->r_pos.x + n;
+
+                /* Monsters */
+
+                if ((rnd(100) < (MAXTREAS * 100) /
+                    (width * length)) &&
+                    (mvwinch(mw, rp->r_pos.y + j,
+                    rp->r_pos.x + n) == ' '))
+                {
+                    struct thing    *th;
+
+                    /* Make a monster */
+
+                    item = new_item(sizeof *th);
+                    th = THINGPTR(item);
+
+                    /*
+                     * Put it there and aggravate it
+                     * (unless it can escape) only put
+                     * one UNIQUE per treasure room at
+                     * most
+                     */
+
+                    if (got_unique)
+                        new_monster(item, randmonster(NOWANDER, GRAB), &trp,
+                            NOMAXSTATS);
+                    else
+                    {
+                        new_monster(item, randmonster(NOWANDER, NOGRAB), &trp,
+                            NOMAXSTATS);
+
+                        if (on(*th, ISUNIQUE))
+                            got_unique = TRUE;
+                    }
+
+                    turn_off(*th, ISFRIENDLY);
+                    turn_on(*th, ISMEAN);
+
+                    if (off(*th, CANINWALL))
+                    {
+                        th->t_ischasing = TRUE;
+                        th->t_chasee = &player;
+                        turn_on(*th, ISRUN);
+                    }
+                }
+
+                /* Treasures */
+
+                if ((rnd(100) < (MAXTREAS * 100) /
+                    (width * length)) &&
+                    (mvinch(rp->r_pos.y + j,
+                    rp->r_pos.x + n) == FLOOR))
+                {
+                    item = new_thing();
+                    cur = OBJPTR(item);
+                    cur->o_pos = trp;
+                    add_obj(item, trp.y, trp.x);
+                }
+            }
+    }
+
+    /* Do MAXOBJ attempts to put things on a level, maybe  */
+
+    maxobjects = (ltype == THRONE) ? rnd(3 * MAXOBJ) + 35 : MAXOBJ;
+
     for (i = 0; i < maxobjects; i++)
-	if (rnd(100) < 40 || ltype == THRONE)
-	{
-	    /*
-	     * Pick a new object and link it in the list
-	     */
-	    item = new_thing();
-	    cur = OBJPTR(item);
-	    /*
-	     * Put it somewhere
-	     */
-	    cnt = 0;
-	    do {
-		rm = rnd_room();
-		rnd_pos(&rooms[rm], &tp);
-	    } until (winat(tp.y, tp.x) == FLOOR || cnt++ > 500);
-	    cur->o_pos = tp;
-	    add_obj(item, tp.y, tp.x);
-	}
+        if (rnd(100) < 40 || ltype == THRONE)
+        {
+            /* Pick a new object and link it in the list */
+
+            item = new_thing();
+            cur = OBJPTR(item);
+
+            /* Put it somewhere */
+
+            cnt = 0;
+
+            do
+            {
+                rm = rnd_room();
+                rnd_pos(&rooms[rm], &tp);
+            }
+            while(!(winat(tp.y, tp.x) == FLOOR || cnt++ > 500));
+
+            cur->o_pos = tp;
+            add_obj(item, tp.y, tp.x);
+        }
+
     /*
      * If he is really deep in the dungeon and he hasn't found an
      * artifact yet, put it somewhere on the ground
      */
+
     if (make_artifact())
     {
-	item = new_item(sizeof *cur);
-	cur = OBJPTR(item);
-	new_artifact(-1, cur);
-	cnt = 0;
-	do {
-	    rm = rnd_room();
-	    rnd_pos(&rooms[rm], &tp);
-	} until (winat(tp.y, tp.x) == FLOOR || cnt++ > 500);
-	cur->o_pos = tp;
-	add_obj(item, tp.y, tp.x);
+        item = new_item(sizeof *cur);
+        cur = OBJPTR(item);
+        new_artifact(-1, cur);
+        cnt = 0;
+
+        do
+        {
+            rm = rnd_room();
+            rnd_pos(&rooms[rm], &tp);
+        }
+        while(!(winat(tp.y, tp.x) == FLOOR || cnt++ > 500));
+
+        cur->o_pos = tp;
+        add_obj(item, tp.y, tp.x);
     }
 }
 
-int throne_monster = 0;		/* identifies monster type in THRONE room */
-/*
- * do_throne:
- *	Put a monster's throne room and monsters on the screen
- */
-do_throne()
-{
-    coord mp;
-    int save_level;
-    reg int i;
-    reg struct room *rp;
-    reg struct thing *tp;
-    reg struct linked_list *item;
+int throne_monster = 0;    /* identifies monster type in THRONE room */
 
-    for (rp = rooms; rp < &rooms[MAXROOMS]; rp++) {
-	rp->r_nexits = 0;			/* no exits */
-	rp->r_flags = ISGONE;			/* kill all rooms */
+/*
+    do_throne()
+        Put a monster's throne room and monsters on the screen
+*/
+
+void
+do_throne(void)
+{
+    coord   mp;
+    int save_level;
+    int i;
+    struct room *rp;
+    struct thing    *tp;
+    struct linked_list  *item;
+
+    for (rp = rooms; rp < &rooms[MAXROOMS]; rp++)
+    {
+        rp->r_nexits = 0;   /* no exits */
+        rp->r_flags = ISGONE;   /* kill all rooms */
     }
-    rp = &rooms[0];				/* point to only room */
-    rp->r_flags = 0;				/* this room NOT gone */
+
+    rp = &rooms[0];     /* point to only room */
+    rp->r_flags = 0;    /* this room NOT gone */
     rp->r_max.x = 40;
-    rp->r_max.y = 10;				/* 10 * 40 room */
-    rp->r_pos.x = (COLS - rp->r_max.x) / 2;	/* center horizontal */
-    rp->r_pos.y = 3;				/* 2nd line */
-    draw_room(rp);				/* draw the only room */
+    rp->r_max.y = 10;   /* 10 * 40 room */
+    rp->r_pos.x = (COLS - rp->r_max.x) / 2; /* center horizontal */
+    rp->r_pos.y = 3;    /* 2nd line */
+    draw_room(rp);      /* draw the only room */
 
     save_level = level;
-    level = max(2*level, level + roll(4,6));
+    level = max(2 * level, level + roll(4, 6));
 
-    if (throne_monster == 0)			/* Who has he offended? */
-	do {
-	    throne_monster = nummonst - roll(1, NUMSUMMON);
-	} until(monsters[throne_monster].m_normal);
+    if (throne_monster == 0)    /* Who has he offended? */
+        do
+            throne_monster = nummonst - roll(1, NUMSUMMON);
+        while(!monsters[throne_monster].m_normal);
 
     /* Create summoning monster */
+
     item = new_item(sizeof *tp);
+
     tp = THINGPTR(item);
-    do {
-	rnd_pos(rp, &mp);
-    } until(mvwinch(stdscr, mp.y, mp.x) == FLOOR);
+
+    do
+    {
+        rnd_pos(rp, &mp);
+    }
+    while(mvwinch(stdscr, mp.y, mp.x) != FLOOR);
 
     new_monster(item, throne_monster, &mp, MAXSTATS);
     turn_on(*tp, CANSEE);
     turn_off(*tp, ISFRIENDLY);
 
-    if (on(*tp, CANSUMMON))			/* summon his helpers */
-	summon_help(tp, FORCE);
-    else {
-	for (i = roll(4,10); i >= 0; i--) {
-	    item = new_item(sizeof *tp);
-	    tp = THINGPTR(item);
-	    do {
-		rnd_pos(rp, &mp);
-	    } until(mvwinch(stdscr, mp.y, mp.x) == FLOOR);
-	    new_monster(item, randmonster(NOWANDER, NOGRAB), &mp, MAXSTATS);
-	    turn_on(*tp, CANSEE);
-	    turn_off(*tp, ISFRIENDLY);
-	}
+    if (on(*tp, CANSUMMON)) /* summon his helpers */
+        summon_help(tp, FORCE);
+    else
+    {
+        for (i = roll(4, 10); i >= 0; i--)
+        {
+            item = new_item(sizeof *tp);
+            tp = THINGPTR(item);
+
+            do
+            {
+                rnd_pos(rp, &mp);
+            }
+            while(mvwinch(stdscr, mp.y, mp.x) != FLOOR);
+
+            new_monster(item, randmonster(NOWANDER, NOGRAB), &mp, MAXSTATS);
+            turn_on(*tp, CANSEE);
+            turn_off(*tp, ISFRIENDLY);
+        }
     }
-    
-    level = save_level + roll(2,3);		/* send the hero down */
+
+    level = save_level + roll(2, 3);    /* send the hero down */
     aggravate();
     throne_monster = 0;
 }
 
 /*
- * create_lucifer:
- *	special surprise on the way back up
- *	create Lucifer with more than the usual god abilities
- */
+    create_lucifer()
+        special surprise on the way back up create Lucifer
+        with more than the usual god abilities
+*/
 
-create_lucifer(stairs)
-coord *stairs;
+void
+create_lucifer(coord *stairs)
 {
-    register struct linked_list *item = new_item(sizeof (struct thing));
-    register struct thing *tp = THINGPTR(item);
+    struct linked_list  *item = new_item(sizeof(struct thing));
+    struct thing    *tp = THINGPTR(item);
 
-    new_monster(item, nummonst+1, stairs, MAXSTATS);
+    new_monster(item, nummonst + 1, stairs, MAXSTATS);
     turn_on(*tp, CANINWALL);
     turn_on(*tp, CANHUH);
     turn_on(*tp, CANBLINK);
@@ -488,3 +654,74 @@ coord *stairs;
     turn_on(*tp, CANHOLD);
     turn_on(*tp, CANBRANDOM);
 }
+
+#if 0
+
+#define TREAS_ROOM 20   /* one chance in TREAS_ROOM for a treasure room */
+#define MAXTREAS 10     /* maximum number of treasures in a treasure room */
+#define MINTREAS 2      /* minimum number of treasures in a treasure room */
+
+
+/*
+ * treas_room:
+ *      Add a treasure room
+ */
+#define MAXTRIES 10     /* max number of tries to put down a monster */
+
+treas_room()
+{
+    register int nm, index;
+    register THING *tp;
+    register struct room *rp;
+    register int spots, num_monst;
+    coord mp;
+
+    rp = &rooms[rnd_room()];
+    spots = (rp->r_max.y - 2) * (rp->r_max.x - 2) - MINTREAS;
+    if (spots > (MAXTREAS - MINTREAS))
+        spots = (MAXTREAS - MINTREAS);
+    num_monst = nm = rnd(spots) + MINTREAS;
+    while (nm--)
+    {
+        do
+        {
+            rnd_pos(rp, &mp);
+            index = INDEX(mp.y, mp.x);
+        } until (_level[index] == FLOOR);
+        tp = new_thing();
+        tp->o_pos = mp;
+        attach(lvl_obj, tp);
+        _level[index] = tp->o_type;
+    }
+
+    /*
+     * fill up room with monsters from the next level down
+     */
+
+    if ((nm = rnd(spots) + MINTREAS) < num_monst + 2)
+        nm = num_monst + 2;
+    spots = (rp->r_max.y - 2) * (rp->r_max.x - 2);
+    if (nm > spots)
+        nm = spots;
+    level++;
+    while (nm--)
+    {
+        spots = 0;
+        do
+        {
+            rnd_pos(rp, &mp);
+            index = INDEX(mp.y, mp.x);
+            spots++;
+        } until (_monst[index] == NULL || spots > MAXTRIES);
+        if (_monst[index] == NULL)
+        {
+            tp = new_item();
+            new_monster(tp, randmonster(FALSE), &mp);
+            tp->t_flags |= ISMEAN;      /* no sloughers in THIS room */
+            give_pack(tp);
+        }
+    }
+    level--;
+}
+
+#endif
