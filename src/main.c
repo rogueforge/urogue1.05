@@ -1,6 +1,7 @@
 /*
- * Last Modified: Dec 29, 1990
+ * Last Modified: Aug 10, 1993
  */
+
  /*
  * Rogue
  * Exploring the dungeons of doom
@@ -9,184 +10,240 @@
  *
  */
 
-#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include <signal.h>
+#include <stdlib.h>
 #include "rogue.h"
-#include "score.h"
 
-int fd_score = -1;		/* file descriptor the score file */
+FILE *fd_score = NULL;
+/* Command line options */
 
-main(argc, argv, envp)
-char **argv;
-char **envp;
+int prscore;        /* Print scores */
+int prversion;      /* Print version info */
+
+
+int
+main(int argc, char *argv[])
 {
-    register int x;
-    register char *env;
-    char *crypt(), *strrchr();
-    int lowtime;
-    long now;
-	int rflag;
+    int x;
+    char    *env;
+    time_t lowtime;
+    long    now;
+    int rflag;
+    char *nm;
 
-    for (x = 1; x < argc; x++) {
-    	if (argv[x][0] != '-')
-    	    break;
-    	switch (argv[x][1]) {
-    	    when 's':
-		prscore = TRUE;
-    	    when 'v':
-		prversion = TRUE;
-	    when 'r':
-		rflag = TRUE;
-	    otherwise:
-		fprintf(stderr, "%s: Unknown option '%c'.\n",
-		    argv[0], argv[x][1]);
-		exit(1);
-	}
+    for (x = 1; x < argc; x++)
+    {
+        if (argv[x][0] != '-')
+            break;
+
+        switch (argv[x][1])
+        {
+            case 's':
+                prscore = TRUE;
+                break;
+
+            case 'v':
+                prversion = TRUE;
+                break;
+
+            case 'r':
+                rflag = TRUE;
+                break;
+
+            default:
+                fprintf(stderr,"%s: Unknown option '%c'.\n",argv[0],argv[x][1]);
+                exit(1);
+        }
     }
-    if(!rflag) {
-    	argc -= (x - 1);
-    	argv += (x - 1);
+
+    if (!rflag)
+    {
+        argc -= (x - 1);
+        argv += (x - 1);
     }
 
     /* Get default score file */
+
     strcpy(score_file, "urogue.scr");
 
-    fd_score = open(score_file, 2);
+    fd_score = fopen(score_file, "r+");
+
+    if (fd_score == NULL)
+        fd_score = fopen(score_file, "a+");
 
     if ((env = getenv("OPTIONS")) != NULL)
-	parse_opts(env);
-    if (env == NULL || fruit[0] == '\0') {
-	static char *funfruit[] = {
-		"candleberry", "caprifig", "dewberry", "elderberry",
-		"gooseberry", "guanabana", "hagberry", "ilama", "imbu",
-		"jaboticaba", "jujube", "litchi", "mombin", "pitanga",
-		"prickly pear", "rambutan", "sapodilla", "soursop",
-		"sweetsop", "whortleberry"
-	};
+        parse_opts(env);
 
-	srandom(1234);
-	strcpy(fruit, funfruit[rnd(sizeof(funfruit)/sizeof(funfruit[0]))]);
-     }
+    nm = getenv("USER");
 
-     /* put a copy of fruit in the right place */
-     strcpy(fd_data[1].mi_name, fruit);
-
-    /*
-     * print scores
-     */
-    if (prscore) {
-	waswizard = TRUE;
-	score(0L, 0, SCOREIT, 0);
-	exit(0);
-    }
-
-    /*
-     * check for version option
-     */
-    if (prversion) {
-	printf("UltraRogue Version %s.\n", release);
-	exit(0);
-    }
-
-    if (argc == 2 && argv[1][0] != '\0' &&
-	!restore(argv[1], envp)) /* Note: restore returns on error only */
-	    exit(1);
-    lowtime = (int) time(&now);
-    dnum = (wizard && getenv("SEED") != NULL ?
-	atoi(getenv("SEED")) :
-	lowtime);
-    if (wizard)
-	printf("Hello %s, welcome to dungeon #%d", whoami, dnum);
+    if (nm != NULL)
+        strcpy(whoami,nm);
     else
-	printf("Hello %s, just a moment while I dig the dungeon...", whoami);
-    fflush(stdout);
-    srandom(dnum);
+        strcpy(whoami,"anonymous");
 
-    init_things();			/* Set up probabilities of things */
-    init_fd();				/* Set up food probabilities */
-    init_colors();			/* Set up colors of potions */
-    init_stones();			/* Set up stone settings of rings */
-    init_materials();			/* Set up materials of wands */
-    initscr();				/* Start up cursor package */
-    init_names();			/* Set up names of scrolls */
+    if (env == NULL || fruit[0] == '\0')
+    {
+        static const char *funfruit[] =
+        {
+            "candleberry", "caprifig", "dewberry", "elderberry",
+            "gooseberry", "guanabana", "hagberry", "ilama", "imbu",
+            "jaboticaba", "jujube", "litchi", "mombin", "pitanga",
+            "prickly pear", "rambutan", "sapodilla", "soursop",
+            "sweetsop", "whortleberry"
+        };
+
+        ur_srandom(1234);
+        strcpy(fruit, funfruit[rnd(sizeof(funfruit) / sizeof(funfruit[0]))]);
+    }
+
+    /* put a copy of fruit in the right place */
+
+    strcpy(fd_data[1].mi_name, fruit);
+    /* strcpy(fd_data[1].mi_name, fruit); Can't copy into static data area? */
+
+    /* print scores */
+
+    if (prscore)
+    {
+        waswizard = TRUE;
+        score(0L, 0, SCOREIT, 0);
+        exit(0);
+    }
+
+    /* check for version option */
+
+    if (prversion)
+    {
+        printf("UltraRogue Version %s.\n", release);
+        exit(0);
+    }
+
+
+    lowtime = time(&now);
+
+    dnum =(wizard && getenv("SEED") != NULL ? atoi(getenv("SEED")) : lowtime);
+
+    if (wizard)
+        printf("Hello %s, welcome to dungeon #%d", whoami, dnum);
+    else
+        printf("Hello %s, just a moment while I dig the dungeon...", whoami);
+
+    fflush(stdout);
+    ur_srandom(dnum);
+
+    init_things();      /* Set up probabilities of things */
+    init_fd();          /* Set up food probabilities */
+    init_colors();      /* Set up colors of potions */
+    init_stones();      /* Set up stone settings of rings */
+    init_materials();   /* Set up materials of wands */
+    initscr();          /* Start up cursor package */
+    refresh();
+    init_names();       /* Set up names of scrolls */
     cbreak();
-    crmode();				/* Cbreak mode */
-    noecho();				/* Echo off */
+    crmode();           /* Cbreak mode */
+    noecho();           /* Echo off */
     nonl();
 
-    /*
-     * Set up windows
-     */
+    /* Set up windows */
+
     cw = newwin(LINES, COLS, 0, 0);
     mw = newwin(LINES, COLS, 0, 0);
     hw = newwin(LINES, COLS, 0, 0);
 
-    waswizard = wizard;			/* set wizard flags */
+    if (argc == 2 && argv[1][0] != '\0' && !restore(argv[1]))
+        /* Note: restore returns on error only */
+        exit(1);
 
-    init_player();			/* look up things and outfit pack */
+    waswizard = wizard; /* set wizard flags */
+
+    init_player();      /* look up things and outfit pack */
 
     resurrect = pstats.s_const;
-    init_exp();				/* set first experience level change */
-    init_flags();			/* set initial flags */
+    init_exp();         /* set first experience level change */
+    init_flags();       /* set initial flags */
     wclear(hw);
     wrefresh(hw);
-    new_level(POSTLEV);			/* Draw current level */
-    /*
-     * Start up daemons and fuses
-     */
-    daemon(doctor, (int) &player, AFTER);
-    fuse(swander, 0, WANDERTIME, AFTER);
-    daemon(stomach, 0, AFTER);
-    daemon(runners, 0, AFTER);
+    new_level(POSTLEV); /* Draw current level */
+
+    /* Start up daemons and fuses */
+
+    start_daemon(doctor, &player, AFTER);
+
+    light_fuse(swander, 0, WANDERTIME, AFTER);
+
+    start_daemon(stomach, 0, AFTER);
+    start_daemon(runners, 0, AFTER);
+
     char_type = player.t_ctype;
     player.t_oldpos = hero;
-    oldrp = roomin(&hero);
+    oldrp = roomin(hero);
     after = TRUE;
-    while (playing)
-	command();			/* Command execution */
+
+    while(playing)
+    {
+        do_daemons(BEFORE);
+        do_fuses(BEFORE);
+
+        command();  /* Command execution */
+
+        if (after)
+            do_after_effects();
+    }
+
     fatal("");
+
+    return(0);
 }
 
 /*
- * fatal:
- *	Exit the program, printing a message.
- */
+    fatal()
+        Exit the program, printing a message.
+*/
 
-fatal(s)
-char *s;
+void
+fatal(char *s)
 {
     clear();
-    move(LINES-2, 0);
+    move(LINES - 2, 0);
     printw("%s", s);
     wrefresh(stdscr);
     endwin();
-    printf("\n");	/* So the cursor doesn't stop at the end of the line */
+    printf("\n");       /* So the cursor doesn't stop at the end of the line */
     exit(0);
 }
 
 /*
- * rnd:
- *	Pick a very random number.
- */
+    rnd()
+        Pick a very random number.
+*/
 
-rnd(range)
-register int range;
+int
+rnd(int range)
 {
-	return(range <= 0 ? 0 : (random() & 0x7fffffffL) % range);
+    return (range <= 0 ? 0 : (ur_random() & 0x7fffffffL) % range);
+}
+
+unsigned long
+ulrnd(unsigned long range)
+{
+    return(range <= 0 ? 0 : (ur_random() & 0x7fffffffL) % range);
 }
 
 /*
- * roll:
- *	roll a number of dice
- */
+    roll()
+        roll a number of dice
+*/
 
-roll(number, sides)
-register int number, sides;
+unsigned int
+roll(int number, int sides)
 {
-    register int dtotal = 0;
+    int dtotal = 0;
 
-    while(number--)
-	dtotal += rnd(sides)+1;
-    return dtotal;
+    while (number--)
+        dtotal += rnd(sides) + 1;
+
+    return(dtotal);
 }
-
