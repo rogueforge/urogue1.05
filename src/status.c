@@ -1,5 +1,5 @@
 /*
- * Last Modified: Jan 7, 1991
+ * Last Modified: Aug 14, 1993
  */
 
 /*
@@ -12,39 +12,42 @@
 #include "rogue.h"
 
 /*
- * has_defensive_spell() - has monster cast a defensive spell
- * Any flags added here must also be in player_powers[]
- */
-has_defensive_spell(th)
-struct thing th;
+    has_defensive_spell()
+        has monster cast a defensive spell
+        Any flags added here must also be in player_powers[]
+*/
+
+int
+has_defensive_spell(struct thing th)
 {
-	if (on(th, HASOXYGEN))
-	    return(TRUE);
-	if (on(th, CANFLY))
-	    return(TRUE);
-	if (on(th, CANINWALL))
-	    return(TRUE);
-	if (on(th, CANREFLECT))
-	    return(TRUE);
-	if (on(th, CANSEE))
-	    return(TRUE);
-	if (on(th, HASMSHIELD))
-	    return(TRUE);
-	if (on(th, HASSHIELD))
-	    return(TRUE);
-	if (on(th, ISHASTE))
-	    return(TRUE);
-	if (on(th, ISREGEN))
-	    return(TRUE);
-	if (on(th, ISDISGUISE))
-	    return(TRUE);
-	if (on(th, ISINVIS))
-	    return(TRUE);
-	if (on(th, NOCOLD))
-	    return(TRUE);
-	if (on(th, NOFIRE))
-	    return(TRUE);
-	if (on(th, ISELECTRIC))
-	    return(TRUE);
-	return(FALSE);
+    if (on(th, HASOXYGEN))
+        return(TRUE);
+    if (on(th, CANFLY))
+        return(TRUE);
+    if (on(th, CANINWALL))
+        return(TRUE);
+    if (on(th, CANREFLECT))
+        return(TRUE);
+    if (on(th, CANSEE))
+        return(TRUE);
+    if (on(th, HASMSHIELD))
+        return(TRUE);
+    if (on(th, HASSHIELD))
+        return(TRUE);
+    if (on(th, ISHASTE))
+        return(TRUE);
+    if (on(th, ISREGEN))
+        return(TRUE);
+    if (on(th, ISDISGUISE))
+        return(TRUE);
+    if (on(th, ISINVIS))
+        return(TRUE);
+    if (on(th, NOCOLD))
+        return(TRUE);
+    if (on(th, NOFIRE))
+        return(TRUE);
+    if (on(th, ISELECTRIC))
+        return(TRUE);
+
+    return(FALSE);
 }
