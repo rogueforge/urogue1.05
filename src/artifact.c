@@ -168,7 +168,7 @@ do_minor(struct object *tr)
     int which;
     unsigned long loss;
 
-    which = rnd(115);
+    which = rnd(110);
 
     debug("Rolled %d.", which);
 

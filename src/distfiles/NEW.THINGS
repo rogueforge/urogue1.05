@@ -1638,4 +1638,14 @@
 13)	spec_item() blesses or curses anything by its plusses
 14)	food is more often +1 or +2
 
+1.05, Oct 25, 92
+1)	start of the ANSI C conversion: prototypes, void, case and break
+	instead of when and otherwise
+2)	fuse(), lengthen() and extinguish() are light_fuse(),
+	lengthen_fuse() and extinguish_fuse()
+3)	the purse is an unsigned long and never goes below zero
+4)	a chill up the spine makes you flee instead of running to a
+	random spot
+5)	minor artifact effects are rolled out of 110, not 115
+
 -------	End of File ------
