@@ -1708,4 +1708,11 @@
 7)	the Wand of Lucifer is the Wand of Yendor
 8)	the hero's next move kept in player.t_nxtpos
 
+1.05, Aug 12, 93
+1)	terse option gone
+2)	options set through opt_arg
+3)	greedy monsters remember their gold in t_horde
+4)	old treas_room() kept under #if 0
+5)	stealing and turning undead use chase_it()
+
 -------	End of File ------
