@@ -55,10 +55,11 @@ get_all(struct linked_list *top)
         obt = OBJPTR(top);
         node = obt->next_obj;
 
+        rem_obj(top, FALSE);
+
         if (!add_pack(top, FALSE))
             return;
 
-        rem_obj(top, FALSE);
         top = node;
     }
 }

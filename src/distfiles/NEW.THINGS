@@ -1737,4 +1737,8 @@
 7)	terse messages gone from rings, scrolls and sticks
 8)	inv_name() gives charge_str(), num() and ring_num() its own buffer
 
+1.05, Aug 15, 93
+1)	picking up a stack takes each thing off the floor first.  it
+	used to dump core
+
 -------	End of File ------
