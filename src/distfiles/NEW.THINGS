@@ -1660,4 +1660,10 @@
 5)	a ring of teleportation teleports 4% of the time, up from 2%
 6)	being summoned to a throne room is ten times rarer
 
+1.05, Oct 29, 92
+1)	daemon() and fuse() are start_daemon() and light_fuse().  daemons
+	and fuses take an argument
+2)	runners() and wghtchk() moved into daemons.c
+3)	the magic shield bonus is kept in s_acmod
+
 -------	End of File ------
