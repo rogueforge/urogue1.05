@@ -1,140 +1,173 @@
 /*
- * Last Modified: Dec 30, 1990
+ * Last Modified: Aug 13, 1993
  */
+
 /*
  * save and restore routines
  *
  */
 
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include "rogue.h"
 
-typedef struct stat STAT;
+extern char *sbrk();
 
-extern char *sys_errlist[], version[];
-extern int errno;
+static int  encwrite(char *start, long size, int outfd);
+static int  encread(char *start, long size, int infd);
+static int  putword(long word, int file);
+static long getword(int fd);
 
-char *sbrk();
-
-STAT sbuf;
-
-save_game()
+int
+save_game(void)
 {
-    register int savefd;
-    register int c;
-    char buf[2*LINELEN];
+    FILE *savefd;
+    int c;
+    char    buf[2 * LINELEN];
+    char    oldfile[2*LINELEN];
 
-    /*
-     * get file name
-     */
-    mpos = 0;
-    if (file_name[0] != '\0') {
-	msg("Save file (%s)? ", file_name);
-	do {
-	    c = getchar() & 0177;
-	    if (c == ESCAPE) return(0);
-	} while (c != 'n' && c != 'N' && c != 'y' && c != 'Y');
-	mpos = 0;
-	if (c == 'y' || c == 'Y')
-	    goto gotfile;
+    /* get file name */
+
+    strcpy(oldfile,file_name);
+
+    do
+    {
+        mpos = 0;
+
+        if (oldfile[0] != '\0')
+            msg("Save file [%s]: ", file_name);
+        else
+            msg("Save file as: ");
+
+        mpos = 0;
+        buf[0] = '\0';
+
+        if (get_string(buf, cw) == QUIT)
+        {
+            msg("");
+            return(FALSE);
+        }
+
+        if ( (buf[0] == 0) && (oldfile[0] != 0) )
+            strcpy(file_name, oldfile);
+        else if (buf[0] != 0)
+            strcpy(file_name, buf);
+        else
+        {
+            msg("");
+            return(FALSE);
+        }
+
+        wclear(hw);
+        wmove(hw, LINES - 1, 0);
+        wrefresh(hw);
+
+        if ((savefd = fopen(file_name, "w")) == NULL)
+            msg(strerror(errno));    /* fake perror() */
     }
+    while (savefd == NULL);
 
-    do {
-	msg("File name: ");
-	mpos = 0;
-	buf[0] = '\0';
-	if (get_str(buf, cw) == QUIT) {
-	    msg("");
-	    return FALSE;
-	}
-	strcpy(file_name, buf);
-gotfile:
-	wclear(hw);
-	wmove(hw, LINES-1, 0);
-	wrefresh(hw);
-	if ((savefd = creat(file_name, 0400)) == -1)
-	    msg(sys_errlist[errno]);	/* fake perror() */
-    } while (savefd == -1);
+    /* write out [compressed?] file */
 
-    /*
-     * write out encrpyted file (after a stat)
-     * The fwrite is to force allocation of the buffer before the write
-     */
     save_file(savefd);
-    return TRUE;
+    return(TRUE);
 }
 
-save_file(savefd)
-register int savefd;
+/*
+    save_file()
+        Write out the game: everything from version[] up to the break,
+        encrypted
+*/
+
+void
+save_file(FILE *savefd)
 {
-    wmove(cw, LINES-1, 0);
+    int fd = fileno(savefd);
+
+    wmove(cw, LINES - 1, 0);
     wrefresh(cw);
-    fstat(savefd, &sbuf);
-    write(savefd, "junk", 5);
-    lseek(savefd, 0L, 0);
-    encwrite(version, sbrk(0) - version, savefd);
-    close(savefd);
+    fflush(savefd);
+    encwrite(version, (char *) sbrk(0) - version, fd);
+    fclose(savefd);
 }
 
-restore(file, envp)
-register char *file;
-char **envp;
+int
+restore(char *file)
 {
-    register int infd;
-    extern char **environ;
-    char *sp, *getenv();
-    char buf[2*LINELEN];
-    STAT sbuf2;
+    int     infd;
+    char    *sp;
+    char    buf[2 * LINELEN];
+    struct stat sbuf;
 
     if (strcmp(file, "-r") == 0)
-	file = file_name;
-    if ((infd = open(file, 0)) < 0) {
-	perror(file);
-	return FALSE;
+        file = file_name;
+
+    if ((infd = open(file, O_RDONLY)) < 0)
+    {
+        perror(file);
+        return(FALSE);
     }
 
     fflush(stdout);
-    encread(buf, strlen(version) + 1, infd);
-    if (strcmp(buf, version) != 0) {
-	printf("Save Game Version: %s\nReal Game Version: %s\n", buf, version);
-	printf("Sorry, saved game is out of date.\n");
-	return FALSE;
+    encread(buf, (long) strlen(version) + 1, infd);
+
+    if (strcmp(buf, version) != 0)
+    {
+        printf("Save Game Version: %s\nReal Game Version: %s\n", buf, version);
+        printf("Sorry, saved game is out of date.\n");
+        return(FALSE);
     }
 
-    fstat(infd, &sbuf2);
+    fstat(infd, &sbuf);
     fflush(stdout);
-    brk(version + sbuf2.st_size);
-    lseek(infd, 0L, 0);
-    encread(version, (int) sbuf2.st_size, infd);
+    brk(version + sbuf.st_size);
+    lseek(infd, 0L, SEEK_SET);
+    encread(version, (long) sbuf.st_size, infd);
 
     /*
-     * we do not close the file so that we will have a hold of the
-     * inode for as long as possible
+     * we do not close the file so that we will have a hold of the inode
+     * for as long as possible
      */
 
     mpos = 0;
-    mvwprintw(cw, 0, 0, "%s: %s", file, ctime(&sbuf2.st_mtime));
+    mvwprintw(cw, 0, 0, "%s: %s", file, ctime(&sbuf.st_mtime));
 
-    if (unlink(file) < 0) {
-	printf("Cannot unlink file\n");
-	return FALSE;
+    if (remove(file) < 0)
+    {
+        printf("Cannot unlink file\n");
+        return(FALSE);
     }
 
-    environ = envp;
     if ((sp = getenv("OPTIONS")) != NULL)
-	parse_opts(sp);
+        parse_opts(sp);
 
     strcpy(file_name, file);
 
-    setup();
     clearok(curscr, TRUE);
     touchwin(cw);
     noecho();
     nonl();
-    srand(1234);
-    playit();
+
+    while(playing)
+    {
+        do_daemons(BEFORE);
+        do_fuses(BEFORE);
+
+        command();  /* Command execution */
+
+        if (after)
+            do_after_effects();
+    }
+
+    fatal("");
+
+    return(FALSE);
 }
 
 /*****************************************************************
@@ -147,156 +180,151 @@ char **envp;
  * the file using data diffusion (putword,getword).
  *
  * Usage:
- *	encwrite (start, size, outfd);
- *	unsigned char *start; long size; int outfd;
+ *      encwrite (start, size, outfd);
+ *      char *start; long size; int outfd;
  *
- *	encread (start, size, infd);
- *	unsigned char *start; long size; int infd;
+ *      encread (start, size, infd);
+ *      char *start; long size; int infd;
  *
  * HISTORY
  *
  * 07-May-86  Michael Laman (laman) at NCR Rancho Bernardo
- *	Modified for UltraRogue.  Removed all uses of standard I/O from
- *	data encryption routines.  This is most portable solution around
- *	a bug of limiting how many times a game may be saved.
+ *      Modified for UltraRogue.  Removed all uses of standard I/O from
+ *      data encryption routines.  This is most portable solution around
+ *      a bug of limiting how many times a game may be saved.
  *
  * 03-Mar-85  Michael Mauldin (mlm) at Carnegie-Mellon University
- *	Modified for UltraRogue.  Allowed multiple encwrites to a file by
- *	removing lseek calls and computing checksum while reading.
+ *      Modified for UltraRogue.  Allowed multiple encwrites to a file by
+ *      removing lseek calls and computing checksum while reading.
  *
  * 20-Dec-82  Michael Mauldin (mlm) at Carnegie-Mellon University
- *	Created as a replacement for the encwrite/encread in
- *	Rogue 5.2, which are very easily broken.
+ *      Created as a replacement for the encwrite/encread in
+ *      Rogue 5.2, which are very easily broken.
  *
  *****************************************************************/
 
 /* Constants for key generation */
-# define OFFSET		667818L
-# define MODULUS	894871L
-# define MULT		2399L
-# define ENCHAR		((unsigned char) ((seed= ((seed*MULT+OFFSET)%MODULUS)) >> 10))
+
+#define OFFSET      667818L
+#define MODULUS     894871L
+#define MULT        2399L
+#define ENCHAR      ((unsigned char) ((seed= ((seed*MULT+OFFSET)%MODULUS)) >> 10))
 
 /* Constants for checksumming */
-# define INITCK		1232531L
-# define CKMOD		6506347L
 
-struct wb { int w1, w2, w3, w4; };
+#define INITCK      1232531L
+#define CKMOD       6506347L
+
+struct wb
+{
+    int w1, w2, w3, w4;
+};
 
 /*****************************************************************
  * Encwrite: write a buffer to a file using data encryption
  *****************************************************************/
 
-encwrite (start, size, outfd)
-register unsigned char *start;
-long size;
-int outfd;
+static int
+encwrite(char *start, long size, int outfd)
 {
-  register unsigned char *buf_p, *end_p;
-  register int ch;
-  register long cksum = INITCK, cnt, seed;
-  char buffer[512 * 20];
+    unsigned char *buf_p, *end_p;
+    int ch;
+    long cksum = INITCK, cnt, seed;
+    char buffer[512 * 20];
 
-  srandom (time ((long *) 0));	/* Build a random seed */
-  seed = (random () & 0x7fff);
-  
-  putword (seed, outfd);			/* Write the random seed */
-  putword (size, outfd);			/* Write the file length */
+    ur_srandom((unsigned) time(NULL)); /* Build a random seed */
+    seed = (ur_random() & 0x7fff);
 
-# ifdef DEBUG
-  fprintf (stderr, "Encwrite: size %ld, seed %ld.\n", size, seed);
-# endif
+    putword(seed, outfd);  /* Write the random seed */
+    putword(size, outfd);  /* Write the file length */
 
-  /* Now checksum, encrypt, and write out the buffer. */
-  while (size)
-  {
-    buf_p = (unsigned char *) buffer;
-    cnt = min(size, sizeof buffer);
-    end_p = (unsigned char *) &buffer[cnt];
-    while(buf_p < end_p) {
-	cksum = ((cksum << 8) + (ch = *start++)) % CKMOD;
-	*buf_p++ = ch ^ ENCHAR;
+    /* Now checksum, encrypt, and write out the buffer. */
+
+    while (size)
+    {
+        buf_p = (unsigned char *) buffer;
+        cnt = min(size, (long) sizeof(buffer));
+        end_p = (unsigned char *) &buffer[cnt];
+
+        while (buf_p < end_p)
+        {
+            cksum = ((cksum << 8) + (ch = (unsigned char) *start++)) % CKMOD;
+            *buf_p++ = ch ^ ENCHAR;
+        }
+
+        if (write(outfd, buffer, cnt) != cnt)
+            return(0);
+
+        size -= cnt;
     }
-    if(write(outfd, buffer, cnt) != cnt)
-	return 0;
-    size -= cnt;
-  }
 
-  putword (cksum, outfd);			/* Write out the checksum */
+    putword(cksum, outfd); /* Write out the checksum */
 
-# ifdef DEBUG
-  fprintf (stderr, "Checksum is %ld.\n", cksum);
-# endif
-  return 1;
+    return(1);
 }
 
 /*****************************************************************
  * Encread: read a block of encrypted text from a file descriptor
  *****************************************************************/
 
-encread (start, size, infd)
-register unsigned char *start;
-long size;
-int infd;
-{ register int length, ch;
-  int stored;
-  long seed, cnt, getword(), cksum = INITCK;
+static int
+encread(char *start, long size, int infd)
+{
+    int length, ch;
+    long stored;
+    long seed, cnt, cksum = INITCK;
 
-  seed = getword (infd); 
-  stored = getword (infd);  
+    seed = getword(infd);
+    stored = getword(infd);
 
-# ifdef DEBUG
-  fprintf (stderr, "Encread: size %ld, seed %ld, stored %ld.\n", 
-	   size, seed, stored);
-# endif
-  
-  if ((length = read (infd, start, (int) min (size, stored))) > 0)
-  { for (cnt = length; cnt--; ) 
-    { ch = (unsigned char) (*start++ ^= ENCHAR);
-      cksum = ((cksum << 8) + ch) % CKMOD;
-    }
-  
-    if ((length == stored) && (getword (infd) != cksum))
+    if ((length = read(infd, start, (int) min(size, stored))) > 0)
     {
-# ifdef DEBUG
-      fprintf (stderr, "Computed checksum %ld is wrong.\n", cksum);
-# else
-      fprintf (stderr, "Sorry, file has been touched.\n");
-# endif
-      while (length--) *--start = '\0';		/* Zero the buffer */
+        for (cnt = length; cnt--; )
+        {
+            ch = (unsigned char) (*start++ ^= ENCHAR);
+            cksum = ((cksum << 8) + ch) % CKMOD;
+        }
+
+        if ((length == stored) && (getword(infd) != cksum))
+        {
+            fprintf(stderr, "Sorry, file has been touched.\n");
+
+            while (length--)
+                *--start = '\0';    /* Zero the buffer */
+        }
     }
-  }
-  
-  return (length);
+
+    return(length);
 }
 
 /*****************************************************************
  * putword: Write out an encoded int word
  *****************************************************************/
 
-putword (word, file)
-long word;
-int file;
-{ struct wb w;
+static int
+putword(long word, int file)
+{
+    struct wb w;
 
-  w.w1 = rand ();  
-  w.w2 = rand ();  
-  w.w3 = rand ();  
-  w.w4 = w.w1 ^ w.w2 ^ w.w3 ^ word;
-  
-  return write (file, (char *) &w, sizeof w);
+    w.w1 = rand();
+    w.w2 = rand();
+    w.w3 = rand();
+    w.w4 = w.w1 ^ w.w2 ^ w.w3 ^ word;
+
+    return(write(file, (char *) &w, sizeof(w)));
 }
 
 /*****************************************************************
  * getword: Read in an encoded int word
  *****************************************************************/
 
-long
-getword (fd)
-int fd;
-{ struct wb w;
-  
-  if (read (fd, (char *) &w, sizeof w) == sizeof w)
-    return (w.w1 ^ w.w2 ^ w.w3 ^ w.w4);
-  else
-    return (0);
+static long
+getword(int fd)
+{
+    struct wb w;
+
+    if (read(fd, (char *) &w, sizeof(w)) == sizeof(w))
+        return(w.w1 ^ w.w2 ^ w.w3 ^ w.w4);
+    else
+        return(0);
 }
