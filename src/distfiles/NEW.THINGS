@@ -1666,4 +1666,7 @@
 2)	runners() and wghtchk() moved into daemons.c
 3)	the magic shield bonus is kept in s_acmod
 
+1.05, Apr 5, 93
+1)	wghtchk() gone from encumb.c, unused pack_level dropped
+
 -------	End of File ------
