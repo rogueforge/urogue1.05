@@ -1107,7 +1107,7 @@ do_phial(void)
                 {
                     tp = THINGPTR(mi);
 
-                    if (off(*tp, ISUNIQUE) || !save_throw(*tp, VS_MAGIC))
+                    if (off(*tp, ISUNIQUE) || !save_throw(VS_MAGIC, tp))
                         turn_on(*tp, ISHUH);
                 }
             }

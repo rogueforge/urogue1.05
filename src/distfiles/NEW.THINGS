@@ -1669,4 +1669,9 @@
 1.05, Apr 5, 93
 1)	wghtchk() gone from encumb.c, unused pack_level dropped
 
+1.05, May 15, 93
+1)	terse messages gone from fighting
+2)	hit and miss messages printed in one piece
+3)	saving throws against the Phial use the right arguments
+
 -------	End of File ------
