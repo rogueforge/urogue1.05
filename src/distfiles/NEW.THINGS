@@ -1648,4 +1648,8 @@
 	random spot
 5)	minor artifact effects are rolled out of 110, not 115
 
+1.05, Oct 26, 92
+1)	properti.c folded into bag.c
+2)	bag filters and actions take their argument in a bag_arg
+
 -------	End of File ------
