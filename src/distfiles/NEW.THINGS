@@ -1726,4 +1726,15 @@
 7)	teleport() returns nothing.  the wizard password is not
 	encrypted
 
+1.05, Aug 14, 93
+1)	all monsters chase with chase_it()
+2)	only the x**31 random number generator is kept
+3)	a known ring of searching shows its bonus
+4)	score() puts you in the top ten.  score file read and written
+	with stdio
+5)	tombstone says 1993
+6)	charmed and frightened monsters follow t_chasee
+7)	terse messages gone from rings, scrolls and sticks
+8)	inv_name() gives charge_str(), num() and ring_num() its own buffer
+
 -------	End of File ------
