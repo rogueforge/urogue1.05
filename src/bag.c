@@ -116,7 +116,7 @@ count_bag(linked_list *bag_p,
 void
 del_bag(linked_list *bag_p, object *obj_p)
 {
-    pop_bag(bag_p, obj_p);  /* get the thing from the bag */
+    pop_bag(&bag_p, obj_p);  /* get the thing from the bag */
     ur_free(obj_p);         /* release the memory */
 }
 

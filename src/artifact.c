@@ -1428,7 +1428,7 @@ do_bag(struct object *obj)
                     item_p = make_item(obj_p);  /* attach upper structure */
 
                     if (add_pack(item_p, MESSAGE) != FALSE)
-                        pop_bag(obj->o_bag, obj_p);
+                        pop_bag(&obj->o_bag, obj_p);
                 }
             }
             break;
