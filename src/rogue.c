@@ -27,18 +27,15 @@ struct linked_list *next_mons = NULL;	/* The mons. after curr_mons */
 /*
  * Command line options
  */
-int prscore;				/* Print scores */
 int prnews;				/* Print news file */
-int prversion;				/* Print version info */
 
-bool char_type = C_NOTSET;		/* what type of character is player */
+int char_type = C_NOTSET;		/* what type of character is player */
 int foodlev = 1;			/* how fast he eats food */
 int ntraps;				/* Number of traps on this level */
 int seed;				/* Random number seed */
 int dnum;				/* Dungeon number */
 int max_level;				/* Deepest player has gone */
 int lost_dext;				/* amount of lost dexterity */
-int mpos = 0;
 int no_command = 0;
 int level = 0;
 unsigned long purse = 0;
@@ -60,9 +57,7 @@ int picked_artifact = 0;
 int msg_index = 0;
 int luck = 0;
 int resurrect = 0;
-bool inv_type = INV_OVER;		/* Overwrite style of inventory */
-int line_cnt;				/* Inventory stuff */
-int newpage;				/* Inventory stuff */
+int inv_type = INV_OVER;		/* Overwrite style of inventory */
 int fam_type = 0;			/* The type of familiar */
 int mons_summoned = 0;			/* Number of summoned monsters */
 char *lastfmt;
@@ -70,7 +65,6 @@ char *lastarg;
 char curpurch[15];			/* name of item ready to buy */
 char PLAYER = VPLAYER;			/* what the player looks like */
 char take;				/* Thing the rogue is taking */
-char prbuf[2*LINELEN];			/* Buffer for sprintfs */
 char outbuf[LINELEN];			/* Output buffer for stdout */
 char runch;				/* Direction player is running */
 char whoami[2*LINELEN];			/* Name of player */
@@ -82,25 +76,25 @@ char home[2*LINELEN];			/* User's home directory */
 WINDOW *cw;				/* Window that the player sees */
 WINDOW *hw;				/* Used for the help command */
 WINDOW *mw;				/* Used to store mosnters */
-bool pool_teleport = FALSE;		/* just teleported from a pool */
-bool inwhgt = FALSE;			/* true if from wghtchk() */
-bool after;				/* True if we want after daemons */
-bool waswizard;				/* Was a wizard sometime */
-bool canwizard;				/* Will be permitted to do this */
-bool playing = TRUE; 
-bool running = FALSE; 
-bool fighting = FALSE; 
-bool wizard = FALSE;
-bool wiz_verbose = TRUE;
-bool fight_flush = FALSE; 
-bool terse = FALSE; 
-bool door_stop = FALSE;
-bool jump = FALSE; 
-bool doorstop = TRUE;
-bool firstmove = FALSE; 
-bool askme = FALSE;
-bool moving = FALSE;
-bool in_shell = FALSE; 
+int pool_teleport = FALSE;		/* just teleported from a pool */
+int inwhgt = FALSE;			/* true if from wghtchk() */
+int after;				/* True if we want after daemons */
+int waswizard;				/* Was a wizard sometime */
+int canwizard;				/* Will be permitted to do this */
+int playing = TRUE; 
+int running = FALSE; 
+int fighting = FALSE; 
+int wizard = FALSE;
+int wiz_verbose = TRUE;
+int fight_flush = FALSE; 
+int terse = FALSE; 
+int door_stop = FALSE;
+int jump = FALSE; 
+int doorstop = TRUE;
+int firstmove = FALSE; 
+int askme = FALSE;
+int moving = FALSE;
+int in_shell = FALSE; 
 coord delta;				/* Change indicated to get_dir() */
 LEVTYPE levtype;			/* type of level i'm on */
 
