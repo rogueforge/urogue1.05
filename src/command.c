@@ -594,7 +594,7 @@ do_after_effects(void)
     for (i = 0; i <= ring_value(R_SEARCH); i++)
         search(FALSE);
 
-    if (is_wearing(R_TELEPORT) && rnd(100) < 2)
+    if (is_wearing(R_TELEPORT) && rnd(50) < 2)
     {
         teleport();
 
