@@ -1693,4 +1693,7 @@
 2)	spell names written into the caller's buffer
 3)	the Sceptre of Might blesses unblessed spells as it should
 
+1.05, Aug 9, 93
+1)	the maze border is mborder
+
 -------	End of File ------
