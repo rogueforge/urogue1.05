@@ -1758,4 +1758,10 @@
 1.05, Sep 25, 93
 1)	wearing armor names it in full.  terse messages gone from armor
 
+1.05, Oct 20, 93
+1)	rogue.h has ANSI prototypes for every source file.  score.h,
+	stepok.h and death.h folded in
+2)	when, otherwise and until macros gone
+3)	magicitm.c and properti.c out of the Makefile
+
 -------	End of File ------
