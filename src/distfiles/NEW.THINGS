@@ -1674,4 +1674,9 @@
 2)	hit and miss messages printed in one piece
 3)	saving throws against the Phial use the right arguments
 
+1.05, May 18, 93
+1)	stored characters read and written with stdio and no longer
+	encrypted
+2)	get_obj() gone.  free_ident() stops once it has freed the entry
+
 -------	End of File ------
