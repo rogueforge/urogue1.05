@@ -1696,4 +1696,16 @@
 1.05, Aug 9, 93
 1)	the maze border is mborder
 
+1.05, Aug 10, 93
+1)	the main loop runs the daemons and fuses before and after each
+	command
+2)	ur_random() replaces random().  ulrnd() for long ranges
+3)	score file opened with stdio
+4)	trap names written into the caller's buffer
+5)	food is used up after it is eaten
+6)	weapons and armor use Rogue's names and dice: two handed sword,
+	mace, spear, long sword, leather and studded leather armor
+7)	the Wand of Lucifer is the Wand of Yendor
+8)	the hero's next move kept in player.t_nxtpos
+
 -------	End of File ------
