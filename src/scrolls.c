@@ -1192,12 +1192,10 @@ read_scroll(struct thing *reader, int which, int flags)
                 type = min(type, nummonst);
             }
             else if (cursed)    /* Summon a bat, maggot, eye, etc */
-            {
                 type = rnd(20) + 1; /* For now */
 
-                summon_monster(type, FAMILIAR, MESSAGE);
-                turn_on(player, HASFAMILIAR);
-            }
+            summon_monster(type, FAMILIAR, MESSAGE);
+            turn_on(player, HASFAMILIAR);
         }
         break;
 
