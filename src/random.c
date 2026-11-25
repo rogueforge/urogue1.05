@@ -24,7 +24,7 @@ static unsigned long randtbl[DEG_3 + 1] = {TYPE_3,
 
 static unsigned long *fptr    = &randtbl[SEP_3 + 1];
 static unsigned long *rptr    = &randtbl[1];
-static unsigned long *state   = &randtbl[-1];
+static unsigned long *state   = &randtbl[1];
 static unsigned long *end_ptr = &randtbl[DEG_3 + 1];
 
 void
