@@ -1101,7 +1101,8 @@ quaff(struct thing *quaffer, int which, int flags)
         {
             msg(terse ? "Call it: " :  "What do you want to call it? ");
 
-            if (get_string(buf, cw) == NORM)
+            buf[0] = '\0';
+            if (get_string(buf, cw) == NORM && buf[0] != '\0')
             {
                 guess_items[TYP_POTION][which] =
                     new(strlen(buf) + 1);
