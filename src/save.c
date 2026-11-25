@@ -122,6 +122,7 @@ save_game(void)
         if (get_string(buf, cw) == QUIT)
         {
             msg("");
+            strcpy(file_name, oldfile);
             return(FALSE);
         }
 
@@ -132,6 +133,7 @@ save_game(void)
         else
         {
             msg("");
+            strcpy(file_name, oldfile);
             return(FALSE);
         }
 
@@ -150,6 +152,7 @@ save_game(void)
     {
         unlink(file_name);
         msg("Could not save the game: %s", strerror(errno));
+        strcpy(file_name, oldfile);
         return(FALSE);
     }
 
