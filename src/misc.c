@@ -64,10 +64,11 @@ tr_name(char ch, char *trname)
             s = "rust trap.";
             break;
         default:
-            ;
+            s = "trap.";
+            break;
     }
 
-    sprintf(trname, "You found a %d", s);
+    sprintf(trname, "You found a %s", s);
 
     return(trname);
 }
