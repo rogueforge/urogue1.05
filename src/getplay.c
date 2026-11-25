@@ -277,16 +277,16 @@ which_class(int c_class)
 
     switch (c_class)
     {
-        case C_FIGHTER:   class = "fighter";
-        case C_MAGICIAN:  class = "magician";
-        case C_CLERIC:    class = "cleric";
-        case C_THIEF:     class = "thief";
-        case C_PALADIN:   class = "paladin";
-        case C_RANGER:    class = "ranger";
-        case C_DRUID:     class = "druid";
-        case C_ILLUSION:  class = "illusionist";
-        case C_ASSASIN:   class = "assasin";
-        case C_NINJA:     class = "ninja";
+        case C_FIGHTER:   class = "fighter"; break;
+        case C_MAGICIAN:  class = "magician"; break;
+        case C_CLERIC:    class = "cleric"; break;
+        case C_THIEF:     class = "thief"; break;
+        case C_PALADIN:   class = "paladin"; break;
+        case C_RANGER:    class = "ranger"; break;
+        case C_DRUID:     class = "druid"; break;
+        case C_ILLUSION:  class = "illusionist"; break;
+        case C_ASSASIN:   class = "assasin"; break;
+        case C_NINJA:     class = "ninja"; break;
         default:          class = "monster";
     }
 
