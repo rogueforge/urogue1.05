@@ -89,14 +89,14 @@ get_stack(struct linked_list *item)
         sprintf(buf, "You are standing on top of the following stack of items: ");
         add_line(buf);
         sprintf(buf, "%d) -- %s", i, inv_name(obj, TRUE));
-        add_line(buf);
+        add_line("%s", buf);
 
         while (ll)
         {
             i++;
             obj = OBJPTR(ll);
             sprintf(buf, "%d) -- %s", i, inv_name(obj, TRUE));
-            add_line(buf);
+            add_line("%s", buf);
             ll = next(ll);
         }
 
