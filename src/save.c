@@ -205,10 +205,17 @@ restore(char *file)
     if (strcmp(file, "-r") == 0)
         file = strcpy(name, file_name);
 
-    if ((infd = open(file, O_RDONLY)) < 0)
+    if ((infd = open(file, O_RDONLY)) < 0 || fstat(infd, &sbuf) < 0)
     {
         endwin();
         perror(file);
+        return(FALSE);
+    }
+
+    if (sbuf.st_uid != getuid())
+    {
+        endwin();
+        printf("Sorry, saved game is not yours.\n");
         return(FALSE);
     }
 
@@ -222,8 +229,6 @@ restore(char *file)
         printf("Sorry, saved game is out of date.\n");
         return(FALSE);
     }
-
-    fstat(infd, &sbuf);
 
     if (sbuf.st_size != save_size())
     {
