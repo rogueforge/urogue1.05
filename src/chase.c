@@ -551,6 +551,10 @@ chase(struct thing *tp, coord *ee, int flee)
         */
 
         incant(tp, *shootit_dir);
+
+        if (!curr_mons)
+            return (TRUE);
+
         tp->t_nxtpos = *er;
         dist = DISTANCE(tp->t_nxtpos, *ee);
     }
