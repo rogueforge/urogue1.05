@@ -427,6 +427,7 @@ do_zap(struct thing *zapper, int which, unsigned long flags)
                 }
             }
         }
+        break;
 
         case WS_MISSILE:
         {
