@@ -85,7 +85,7 @@ teleport(void)
         wmove(cw, hero.y, hero.x);
         wrefresh(cw);
 
-        which = (short) (getchar() & 0177);
+        which = (short) readchar();
 
         while (which != (short) ESCAPE && which != (short) LINEFEED
             && which != (short) CARRIAGE_RETURN)
@@ -115,7 +115,7 @@ teleport(void)
             c.x = min(c.x, COLS - 1);
             wmove(cw, c.y, c.x);
             wrefresh(cw);
-            which = (short) (getchar() & 0177);
+            which = (short) readchar();
         }
 
         which = winat(c.y, c.x);
@@ -212,7 +212,7 @@ passwd(void)
     mpos = 0;
     sp = buf;
 
-    while ((c = (getchar() & 0177)) != '\n' && c != '\r' && c != '\033')
+    while ((c = readchar()) != '\n' && c != '\r' && c != '\033')
     {
         if (c == '\0')
             sp = buf;
