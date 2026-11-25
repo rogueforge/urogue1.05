@@ -354,7 +354,6 @@ new_level(LEVTYPE ltype)
                     ;
 
                 item->l_next = fpack;
-                msg("new_level: l_prev = %p",item);
                 fpack->l_prev = item;
             }
         }

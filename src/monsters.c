@@ -96,7 +96,6 @@ summon_monster(short type, int familiar, int print_message)
                         ;   /* find last item in list */
 
                     item->l_next = fpack;
-                    msg("summon_monster: l_prev = %p\n", item);
                     fpack->l_prev = item;
                 }
             }
