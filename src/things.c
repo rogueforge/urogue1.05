@@ -399,6 +399,9 @@ drop(struct linked_list *item)
     else
         rem_pack(obj);
 
+    if (obj->o_type == ARTIFACT)
+        has_artifact &= ~(1 << obj->o_which);
+
     if (ch == POOL)
     {
         msg("The pool bubbles briefly as your %s sinks out of sight.",
@@ -412,9 +415,6 @@ drop(struct linked_list *item)
         add_obj(item, hero.y, hero.x);
         mvaddch(hero.y, hero.x, (char) obj->o_type);
     }
-
-    if (obj->o_type == ARTIFACT)
-        has_artifact &= ~(1 << obj->o_which);
 
     updpack();
     return(TRUE);
