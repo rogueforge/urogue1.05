@@ -634,7 +634,7 @@ show_floor(void)
             msg("%d gold pieces.", obj->o_count);
         else
         {
-            addmsg(inv_name(obj, TRUE));
+            addmsg("%s", inv_name(obj, TRUE));
             addmsg(".");
             endmsg();
         }

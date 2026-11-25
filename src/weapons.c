@@ -99,7 +99,7 @@ missile(int ydelta, int xdelta, struct linked_list *item, struct thing *tp)
             if (obj->o_type == WEAPON)
                 addmsg("The %s", weaps[obj->o_which].w_name);
             else
-                addmsg(inv_name(obj, LOWERCASE));
+                addmsg("%s", inv_name(obj, LOWERCASE));
 
             msg(" vanishes in a puff of greasy smoke.");
             discard(item);
@@ -234,7 +234,7 @@ fall(struct thing *tp, struct linked_list *item, int pr)
             if (obj->o_type == WEAPON)
                 addmsg("The %s", weaps[obj->o_which].w_name);
             else
-                addmsg(inv_name(obj, LOWERCASE));
+                addmsg("%s", inv_name(obj, LOWERCASE));
 
             msg(" vanishes as it hits the ground.");
         }
