@@ -583,7 +583,7 @@ wanderer(void)
     tp = THINGPTR(item);
     tp->t_pos = cp;     /* Assign the position to the monster */
 
-    chase_it(&tp->t_pos, &hero);
+    chase_it(&tp->t_pos, &player);
 
     i = rnd(7);
 

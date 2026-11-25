@@ -1030,7 +1030,7 @@ electrificate(void)
             turn_off(*tp, ISCHARMED);
             turn_on(*tp, ISRUN);
             turn_off(*tp, ISDISGUISE);
-            chase_it(tp->t_pos, &player);
+            chase_it(&tp->t_pos, &player);
             fighting = after = running = FALSE;
         }
     }

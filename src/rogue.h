@@ -993,7 +993,7 @@ extern struct object *select_bag(linked_list *bag_p, int type,
 /* chase.c */
 
 extern void do_chase(struct thing *th, int flee);
-extern void runto(void);/* coord *runner, coord *spot); */
+extern void chase_it(coord *runner, struct thing *th);
 extern int chase(struct thing *tp, coord *ee, int flee);
 extern struct room *roomin(coord cp);
 extern struct linked_list *find_mons(int y, int x);
@@ -1011,6 +1011,7 @@ extern int can_blink(struct thing *tp);
 
 extern void command(void);
 extern void make_omnipotent(void);
+extern void do_after_effects(void);
 extern void quit_handler(int sig);
 extern void quit(void);
 extern void search(int is_thief);
