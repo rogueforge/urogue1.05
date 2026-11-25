@@ -308,7 +308,7 @@ score(long amount, int lvl, int flags, int monst) /*ARGSUSED*/
     {
         if (scp->sc_score)
         {
-            printf("%d\t%ld+%ld\t%ld\t%s:", scp - top_ten + 1,
+            printf("%d\t%d+%ld\t%ld\t%s:", (int) (scp - top_ten + 1),
                    scp->sc_lvl,
                    scp->sc_score,
                    scp->sc_gold,
@@ -619,7 +619,7 @@ showpack(char *howso)
     }
 
     mvprintw(cnt + 1, 0, "Carrying %d gold pieces", oldpurse);
-    mvprintw(cnt + 2, 0, "Carrying objects worth %d gold pieces", purse);
+    mvprintw(cnt + 2, 0, "Carrying objects worth %lu gold pieces", purse);
     purse += oldpurse;
     refresh();
 }

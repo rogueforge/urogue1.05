@@ -241,7 +241,7 @@ status(int display)
     mvwaddstr(cw, LINES - 2, 0, buf);
     wclrtoeol(cw);
 
-    sprintf(buf, "Lvl:%d Au:%d Hpt:%3d(%3d) Pow:%d(%d) Ac:%d  Exp:%d+%ld  %s",
+    sprintf(buf, "Lvl:%d Au:%lu Hpt:%3ld(%3ld) Pow:%d(%d) Ac:%d  Exp:%d+%ld  %s",
         level,
         purse,
         stat_ptr->s_hpt, max_ptr->s_hpt,
