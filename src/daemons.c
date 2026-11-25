@@ -216,7 +216,7 @@ doctor_spell_points(struct thing *tp)
         called to roll to see if a wandering monster starts up
 */
 
-daemon
+daemon_t
 rollwand(daemon_arg *arg) /*ARGSUSED*/
 {
     static int between = 0;
@@ -241,7 +241,7 @@ rollwand(daemon_arg *arg) /*ARGSUSED*/
         digest the hero's food
 */
 
-daemon
+daemon_t
 stomach(daemon_arg *arg) /*ARGSUSED*/
 {
     int oldfood, old_hunger;
@@ -315,7 +315,7 @@ stomach(daemon_arg *arg) /*ARGSUSED*/
         each other, this routine have been enhanced and may need more work yet
 */
 
-daemon
+daemon_t
 runners(daemon_arg *arg) /*ARGSUSED*/
 {
     struct linked_list  *item;
