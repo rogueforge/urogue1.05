@@ -535,12 +535,12 @@ chase(struct thing *tp, coord *ee, int flee)
                (fam_ptr != NULL && tp == THINGPTR(fam_ptr)),
                tp->t_index, breath, roll(tp->t_stats.s_lvl, 6));
 
+        if (!curr_mons)
+            return (TRUE);
+
         tp->t_nxtpos = *er;
 
         dist = DISTANCE(tp->t_nxtpos, *ee);
-
-        if (!curr_mons)
-            return (TRUE);
     }
     else if (shootit_dir && on(*tp, CANCAST) &&
          (off(player, ISDISGUISE) || (rnd(tp->t_stats.s_lvl) > 6)))
