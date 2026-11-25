@@ -1105,7 +1105,8 @@ quaff(struct thing *quaffer, int which, int flags)
             if (get_string(buf, cw) == NORM && buf[0] != '\0')
             {
                 guess_items[TYP_POTION][which] =
-                    new(strlen(buf) + 1);
+                    new(strlen(buf) < sizeof(struct thing) ?
+                        sizeof(struct thing) : strlen(buf) + 1);
                 strcpy(guess_items[TYP_POTION][which], buf);
             }
         }
