@@ -1352,6 +1352,7 @@ dip_it(void)
     }
 
     ob = OBJPTR(what);
+    ur_free(what);
     mpos = 0;
 
     if (ob == cur_armor)
