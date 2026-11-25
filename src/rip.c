@@ -53,7 +53,8 @@ static const char *rip[] =
 void
 death(int monst)
 {
-    char **dp = rip, *killer;
+    const char **dp = rip;
+    char *killer;
     struct tm   *lt;
     time_t  date;
     char    buf[80];
