@@ -43,7 +43,7 @@ main(int argc, char *argv[])
     char    *env;
     time_t lowtime;
     long    now;
-    int rflag;
+    int rflag = FALSE;
     char *nm;
 
     for (x = 1; x < argc; x++)
