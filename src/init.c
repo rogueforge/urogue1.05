@@ -245,9 +245,9 @@ const struct h_list helpstr[] =
     { 'a',      "  affect the undead"                   },
     { '^',      "  set a trap"                          },
     { 'D',      "  dip something (into a pool)"         },
-    { 19,       "<dir>  take (steal) from (direction)"  }, /* ctrl-t */
-    { 17,       "   redraw screen"                      }, /* ctrl-r */
-    { 15,       "   back up to 10 previous messages"    }, /* ctrl-p */
+    { 20,       "<dir>  take (steal) from (direction)"  }, /* ctrl-t */
+    { 18,       "   redraw screen"                      }, /* ctrl-r */
+    { 16,       "   back up to 10 previous messages"    }, /* ctrl-p */
     { ESCAPE,   "   cancel command"                     },
     { 'v',      "  print program version number"        },
     { 'S',      "  save game"                           },
@@ -259,23 +259,23 @@ const struct h_list helpstr[] =
     /* Wizard commands.  Identified by (h_ch != 0 && h_desc == 0). */
 
     {'-',       0                                       },
-    { 22,       "   enter wizard mode"                  }, /* ctrl-w */
-    { 22,       "v  toggle wizard verbose mode"         },
-    { 22,       "e  exit wizard mode"                   },
-    { 22,       "r  random number check"                },
-    { 22,       "s  system statistics"                  },
-    { 22,       "F  food statistics"                    },
-    { 22,       "f  floor map"                          },
-    { 22,       "m  see monster"                        },
-    { 22,       "M  create monster"                     },
-    { 22,       "c  create item"                        },
-    { 22,       "i  inventory level"                    },
-    { 22,       "I  identify item"                      },
-    { 22,       "t  random teleport"                    },
-    { 22,       "g  goto level"                         },
-    { 22,       "C  charge item"                        },
-    { 22,       "w  print worth of object"              },
-    { 22,       "o  improve stats and pack"             },
+    { 23,       "   enter wizard mode"                  }, /* ctrl-w */
+    { 23,       "v  toggle wizard verbose mode"         },
+    { 23,       "e  exit wizard mode"                   },
+    { 23,       "r  random number check"                },
+    { 23,       "s  system statistics"                  },
+    { 23,       "F  food statistics"                    },
+    { 23,       "f  floor map"                          },
+    { 23,       "m  see monster"                        },
+    { 23,       "M  create monster"                     },
+    { 23,       "c  create item"                        },
+    { 23,       "i  inventory level"                    },
+    { 23,       "I  identify item"                      },
+    { 23,       "t  random teleport"                    },
+    { 23,       "g  goto level"                         },
+    { 23,       "C  charge item"                        },
+    { 23,       "w  print worth of object"              },
+    { 23,       "o  improve stats and pack"             },
     { 0,        0                                       }
 };
 

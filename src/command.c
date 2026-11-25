@@ -329,11 +329,11 @@ command(void)
                     free(fd_data[1].mi_name);
                     fd_data[1].mi_name = strdup(fruit);
                     break;
-                case 17:    /* ctrl-r */
+                case 18:    /* ctrl-r */
                     after = FALSE;
                     clearok(curscr, TRUE);
                     break;
-                case 15: /* ctrl-p */
+                case 16: /* ctrl-p */
                 {
                     int decrement = FALSE;
                     after = FALSE;
@@ -387,7 +387,7 @@ command(void)
                 /*
                  * Directional commands - get_dir sets delta
                  */
-                case 19:    /* ctrl-t */
+                case 20:    /* ctrl-t */
                     if (get_dir())
                         steal();
                     else
@@ -413,7 +413,7 @@ command(void)
                  * wizard commands
                  */
 
-                case 22:    /* ctrl-w */
+                case 23:    /* ctrl-w */
                     after = FALSE;
 
                     if (!wizard)
