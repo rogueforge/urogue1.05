@@ -688,16 +688,19 @@ get_dir(void)
             case 'U':
                 delta.y = -1;
                 delta.x = 1;
+                break;
 
             case 'b':
             case 'B':
                 delta.y = 1;
                 delta.x = -1;
+                break;
 
             case 'n':
             case 'N':
                 delta.y = 1;
                 delta.x = 1;
+                break;
 
             case  ESCAPE:
                 return FALSE;
