@@ -198,6 +198,8 @@ score(long amount, int lvl, int flags, int monst) /*ARGSUSED*/
 
     char    *packend;
 
+    file_name[0] = '\0';   /* the game is over: nothing to save */
+
     if (flags != WINNER && flags != TOTAL && flags != SCOREIT)
     {
         if (flags == CHICKEN)
@@ -381,6 +383,8 @@ total_winner(void)
     int worth, oldpurse;
     char    c;
     struct linked_list  *bag = NULL;
+
+    file_name[0] = '\0';   /* the game is over: nothing to save */
 
     clear();
     standout();
