@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include "rogue.h"
 
 char prbuf[4 * LINELEN];    /* Buffer for sprintfs                      */
@@ -206,13 +207,13 @@ shoot_ok(int ch)
 char
 readchar(void)
 {
-    int c, cnt = 0;
+    char c;
+    int cnt = 0;
 
     fflush(stdout);
-    noecho();
 
-    for (errno = 0; (c = getch()) == ERR; errno = 0)
-        if (cnt++ > 100)    /* input has ended */
+    for (errno = 0; read(0, &c, 1) <= 0; errno = 0)
+        if (errno != EINTR && cnt++ > 100)  /* input has ended */
             auto_save();
         else if (errno == EAGAIN)   /* a terminal left not to wait */
             fcntl(0, F_SETFL, fcntl(0, F_GETFL, 0) & ~O_NONBLOCK);
