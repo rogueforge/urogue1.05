@@ -214,6 +214,7 @@ do_move(int dy, int dx)
         else
         {
             msg("You are being held.");
+            running = FALSE;
             return;
         }
     }
