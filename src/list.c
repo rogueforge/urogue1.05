@@ -209,7 +209,6 @@ new_list(void)
         void              *vptr;
     } newp;
 
-    newp.vptr = malloc(sizeof(struct linked_list));
-    memset(newp.vptr,0,sizeof(struct linked_list));
+    newp.vptr = ur_alloc(sizeof(struct linked_list));
     return(newp.ll);
 }
