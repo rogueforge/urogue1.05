@@ -116,8 +116,9 @@ new_level(LEVTYPE ltype)
         if (rnd(10) < level)
         {
             char    ch;
+            int     n = rnd(level / 4) + 1;
 
-            i = ntraps = min(MAXTRAPS, rnd(level / 4) + 1);
+            i = ntraps = min(MAXTRAPS, n);
 
             /* maybe a lair */
 
