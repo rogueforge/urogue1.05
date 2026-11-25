@@ -711,7 +711,7 @@ do_after_effects(void)
         else
         {   /* he blew it - make him pay */
 
-            int death_cause;
+            int death_cause = D_CLUMSY;
 
             switch (player.t_ctype)
             {
