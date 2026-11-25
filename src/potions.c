@@ -581,7 +581,7 @@ quaff(struct thing *quaffer, int which, int flags)
                 }
                 else if (on(player, ISUNSMELL))
                 {
-                    lengthen_fuse(unscent, PHASEDURATION);
+                    lengthen_fuse(scent, PHASEDURATION);
                     msg("You feel your nose tingle.");
                 }
                 else
