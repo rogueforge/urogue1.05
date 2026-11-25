@@ -371,6 +371,8 @@ score(long amount, int lvl, int flags, int monst) /*ARGSUSED*/
                 *sc2 = sc2[-1];
                 sc2--;
             }
+            scp->sc_lvl = lvl;
+            scp->sc_artifacts = has_artifact;
             scp->sc_gold = purse;
             scp->sc_score = amount;
             strncpy(scp->sc_name, whoami, 76);
