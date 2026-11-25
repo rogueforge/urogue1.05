@@ -481,7 +481,7 @@ wield_ok(struct thing *wieldee, struct object *obj, int print_message)
             case C_FIGHTER:  /* wield anything */
             case C_RANGER:
             case C_MONSTER:
-                ;
+                break;
 
             default:  /* Unknown class */
                 debug("Unknown class %d.", class_type);
