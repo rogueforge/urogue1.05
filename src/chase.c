@@ -220,8 +220,22 @@ do_chase(struct thing *th, int flee)
             ((on(*th, CANWIELD) || on(*th, CANSHOOT))
              && (obj->o_type == WEAPON || obj->o_type == ARMOR))
             || (on(*th, CANCAST) && is_magic(obj))) {
+            struct linked_list  *mitem;
+
             rem_obj(item, FALSE);
-            attach(th->t_pack, item);
+
+            for (mitem = th->t_pack; mitem != NULL; mitem = next(mitem))
+                if (obj->o_group > 0 &&
+                    (OBJPTR(mitem))->o_group == obj->o_group)
+                    break;
+
+            if (mitem != NULL)
+            {
+                (OBJPTR(mitem))->o_count += obj->o_count;
+                discard(item);
+            }
+            else
+                attach(th->t_pack, item);
         }
     }
 
