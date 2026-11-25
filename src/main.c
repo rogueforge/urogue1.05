@@ -130,9 +130,14 @@ main(int argc, char *argv[])
 
     lowtime = time(&now);
 
-    dnum =(wizard && getenv("SEED") != NULL ? atoi(getenv("SEED")) : lowtime);
+    env = getenv("SEED");
 
-    if (wizard)
+    if (env != NULL && atoi(env) > 0)
+        dnum = atoi(env);
+    else
+        dnum = lowtime;
+
+    if (wizard || env != NULL)
         printf("Hello %s, welcome to dungeon #%d", whoami, dnum);
     else
         printf("Hello %s, just a moment while I dig the dungeon...", whoami);
