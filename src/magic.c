@@ -234,8 +234,11 @@ incant(struct thing *caster, coord dir)
 
     spell_type = (stat_casters == curp->s_intel) ? "spell" : "prayer";
 
-    if (!is_player && (sp = pick_monster_spell(caster)) == NULL)
+    if (!is_player)
+    {
+        if ((sp = pick_monster_spell(caster)) == NULL)
             return;
+    }
     else
     {
         int num_spells = -1;    /* num of spells cheap enough */
