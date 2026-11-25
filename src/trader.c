@@ -348,6 +348,7 @@ buy_more:
     obj->o_count = 1;
     obj->o_weight = 0;
     obj->o_dplus = obj->o_hplus = 0;
+    obj->o_damage = obj->o_hurldmg = "0d0";
 
     if (!is_spell)
     {
