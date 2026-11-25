@@ -752,6 +752,9 @@ wghtchk(fuse_arg *arg) /*ARGSUSED*/
 {
     int dropchk, err = TRUE;
     char    ch;
+    struct linked_list *item;
+    struct object *obj;
+    int i;
 
     inwhgt = TRUE;
 
@@ -768,6 +771,32 @@ wghtchk(fuse_arg *arg) /*ARGSUSED*/
         }
 
         extinguish_fuse(wghtchk);
+
+        /* Is there anything in the pack that can be dropped? */
+
+        for (item = pack; item != NULL; item = next(item))
+        {
+            obj = OBJPTR(item);
+
+            if (!(obj->o_flags & ISCURSED))
+                break;
+
+            if (obj != cur_armor && obj != cur_weapon)
+            {
+                for (i = 0; i < 10 && cur_ring[i] != obj; i++)
+                    continue;
+
+                if (i == 10)
+                    break;
+            }
+        }
+
+        if (item == NULL)
+        {
+            inwhgt = FALSE;
+            return;
+        }
+
         msg("Your pack is too heavy for you.");
 
         do
