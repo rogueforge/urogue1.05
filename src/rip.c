@@ -391,6 +391,12 @@ score(long amount, int lvl, int flags, int monst) /*ARGSUSED*/
     {
         if (scp->sc_score)
         {
+            scp->sc_name[75] = '\0';
+
+            for (i = 0; scp->sc_name[i] != '\0'; i++)
+                if (scp->sc_name[i] < ' ' || scp->sc_name[i] > '~')
+                    scp->sc_name[i] = '?';
+
             printf("%d\t%d+%ld\t%ld\t%s:", (int) (scp - top_ten + 1),
                    scp->sc_lvl,
                    scp->sc_score,
