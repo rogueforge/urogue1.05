@@ -32,6 +32,14 @@ command(void)
 
     nullcoord.x = nullcoord.y = 0;
 
+    if (fam_upgrade)    /* a stronger familiar for a new level */
+    {
+        fam_upgrade = FALSE;
+
+        if (on(player, HASFAMILIAR) && on(player, CANSUMMON))
+            summon_monster((short) 0, FAMILIAR, NOMESSAGE);
+    }
+
     if (on(player, CANFLY) && rnd(2))
         ntimes++;
 
