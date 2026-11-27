@@ -101,7 +101,9 @@ summon_monster(short type, int familiar, int print_message)
             }
 
             fp->t_pack = NULL;
-            killed(NULL, fam_ptr, NOMESSAGE, NOPOINTS);
+            item = fam_ptr;
+            fam_ptr = NULL;     /* replaced, not lost */
+            killed(NULL, item, NOMESSAGE, NOPOINTS);
         }
 
         fam_ptr = mp;
